@@ -1,0 +1,3178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RehabRangers</title>
+<!--
+  ============================================================
+  REHABRANGERS  —  single-file app (HTML + CSS + JS)
+  ============================================================
+  A wildlife rehabilitation center management system:
+  register rescues, log daily care, track recovery, record
+  releases, and report outcomes — all stored locally.
+
+  HOW TO USE
+  1. Save this file as index.html and open it in any modern browser.
+  2. On first run the app seeds a demo center, 10 animals,
+     care logs and release records so nothing is empty.
+  3. Demo logins:
+        Admin      admin@demo.com     / Admin123
+        Vet        vet@demo.com       / Vet12345
+        Volunteer  volunteer@demo.com / Vol12345
+  4. All data is stored in localStorage under the keys:
+     users, company, animals, careLogs, releases, session, preferences.
+     Use Settings > Data / Backup to export or import a JSON backup.
+  5. Passwords are hashed with SHA-256 (Web Crypto API).
+     They are never stored in plain text.
+  ============================================================
+-->
+<style>
+/* ---------- Theme variables ---------- */
+:root{
+  --brand:#2e8b57;
+  --brand-600:#227144;
+  --brand-100:#e6f3ec;
+  --earth:#b07d4a;
+  --earth-100:#f6efe6;
+  --bg:#f3f7f4;
+  --bg-alt:#eaf1ec;
+  --card:#ffffff;
+  --text:#1c2a22;
+  --muted:#6b7f72;
+  --line:#e2eae4;
+  --shadow:0 4px 16px rgba(28,60,42,.06);
+  --shadow-lg:0 16px 48px rgba(10,25,16,.22);
+  --radius:13px;
+  --danger:#c0392b;
+  --warn:#c07f10;
+  --info:#2a6fb0;
+}
+[data-theme="dark"]{
+  --brand:#45b57c;
+  --brand-600:#2e8b57;
+  --brand-100:#193024;
+  --earth:#c9975f;
+  --earth-100:#2a241c;
+  --bg:#0e1712;
+  --bg-alt:#131f18;
+  --card:#152119;
+  --text:#e6efe8;
+  --muted:#93a89a;
+  --line:#233429;
+  --shadow:0 4px 16px rgba(0,0,0,.32);
+  --shadow-lg:0 16px 48px rgba(0,0,0,.5);
+  --danger:#e0685a;
+  --warn:#e0a94b;
+  --info:#5a9fd8;
+}
+
+/* ---------- Base ---------- */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  transition:background .25s ease,color .25s ease;
+  font-size:14px;
+}
+h1,h2,h3,h4{margin:0;line-height:1.22;letter-spacing:-.01em}
+h1{font-size:1.15rem}
+h2{font-size:.98rem}
+h3{font-size:.9rem}
+p{margin:0}
+a{color:var(--brand-600);text-decoration:none}
+.muted{color:var(--muted);font-size:.8rem}
+.ic{flex:0 0 auto;display:block}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:8px 13px;border-radius:10px;border:1px solid var(--line);
+  background:var(--card);color:var(--text);font:inherit;font-size:.82rem;
+  font-weight:600;cursor:pointer;transition:transform .12s ease,background .15s ease,box-shadow .15s ease;
+  white-space:nowrap;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.btn:active{transform:none}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-600)}
+.btn-ghost{background:transparent}
+.btn-danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn-sm{padding:5px 9px;font-size:.74rem;border-radius:8px}
+.btn-block{width:100%}
+.icon-btn{
+  width:31px;height:31px;display:inline-grid;place-items:center;border-radius:9px;
+  border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;
+  transition:background .15s ease,transform .12s ease;
+}
+.icon-btn:hover{background:var(--brand-100);transform:translateY(-1px)}
+.icon-btn.danger:hover{background:rgba(192,57,43,.12);color:var(--danger)}
+.link-btn{background:none;border:none;color:var(--brand-600);font:inherit;font-weight:600;cursor:pointer;padding:0;text-decoration:underline}
+
+/* ---------- Forms ---------- */
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;min-width:0}
+.field label,.lbl{font-size:.68rem;font-weight:700;color:var(--muted);letter-spacing:.02em;text-transform:uppercase}
+input,select,textarea{
+  width:100%;padding:8px 11px;border-radius:10px;border:1px solid var(--line);
+  background:var(--bg);color:var(--text);font:inherit;font-size:.85rem;outline:none;
+  transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-100);background:var(--card)}
+input[readonly]{opacity:.75;cursor:not-allowed}
+textarea{min-height:60px;resize:vertical}
+input.invalid,select.invalid,textarea.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(192,57,43,.12)}
+.check{display:flex;align-items:center;gap:8px;font-size:.83rem;font-weight:500;color:var(--text)}
+.check input{width:15px;height:15px;accent-color:var(--brand);flex:0 0 auto}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:700px){.row,.row-3{grid-template-columns:1fr}}
+.pass-wrap{position:relative}
+.pass-wrap input{padding-right:38px}
+.pass-toggle{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;padding:6px;display:grid;place-items:center;border-radius:8px}
+.pass-toggle:hover{background:var(--brand-100);color:var(--brand-600)}
+
+/* ---------- Auth ---------- */
+.auth-wrap{
+  min-height:100vh;display:grid;place-items:center;padding:18px;
+  background:radial-gradient(1000px 500px at 8% 0%,var(--brand-100),transparent 62%),var(--bg);
+}
+.auth-card{
+  display:grid;grid-template-columns:1fr 1.12fr;width:100%;max-width:880px;
+  background:var(--card);border:1px solid var(--line);border-radius:22px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.auth-side{
+  background:linear-gradient(160deg,var(--brand) 0%,#17492f 100%);
+  color:#fff;padding:30px 26px;display:flex;flex-direction:column;justify-content:space-between;gap:22px;
+}
+.auth-side .logo-row{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.05rem;letter-spacing:.02em}
+.auth-side .logo-row img{width:36px;height:36px;border-radius:10px;object-fit:cover;flex:0 0 auto}
+.auth-side h2{font-size:1.38rem;line-height:1.2;margin-bottom:9px}
+.auth-side p{opacity:.85;font-size:.86rem;line-height:1.5}
+.auth-feats{display:flex;flex-direction:column;gap:9px;margin-top:16px}
+.auth-feat{display:flex;align-items:center;gap:9px;font-size:.82rem;opacity:.95}
+.auth-feat .dot{width:24px;height:24px;border-radius:8px;background:rgba(255,255,255,.16);display:grid;place-items:center;flex:0 0 auto}
+.auth-main{padding:28px 28px}
+.auth-main h1{font-size:1.25rem;margin-bottom:3px}
+.auth-main .sub{color:var(--muted);font-size:.83rem;margin-bottom:16px}
+.auth-err{background:rgba(192,57,43,.1);color:var(--danger);border:1px solid rgba(192,57,43,.25);padding:8px 11px;border-radius:9px;font-size:.8rem;margin-bottom:11px;display:none}
+.auth-err.show{display:block}
+.strength{height:5px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}
+.strength span{display:block;height:100%;width:0;background:var(--danger);transition:width .25s ease,background .25s ease}
+.strength-txt{font-size:.7rem;color:var(--muted);margin-top:4px}
+.seg{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.seg label{
+  display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:9px;
+  border:1px solid var(--line);cursor:pointer;font-size:.8rem;font-weight:600;color:var(--muted);
+  text-transform:none;letter-spacing:0;
+}
+.seg input{width:14px;height:14px;accent-color:var(--brand);margin:0}
+.seg label:has(input:checked){border-color:var(--brand);background:var(--brand-100);color:var(--brand-600)}
+@media(max-width:860px){
+  .auth-card{grid-template-columns:1fr;max-width:480px}
+  .auth-side{display:none}
+  .auth-main{padding:24px 20px}
+}
+
+/* ---------- App shell ---------- */
+.shell{display:flex;min-height:100vh}
+.sidebar{
+  width:220px;flex:0 0 220px;background:var(--card);border-right:1px solid var(--line);
+  padding:14px 10px;display:flex;flex-direction:column;gap:14px;
+  position:sticky;top:0;height:100vh;z-index:800;
+}
+.brand{display:flex;align-items:center;gap:9px;padding:2px 6px 0;min-width:0}
+.brand-logo{width:34px;height:34px;border-radius:10px;object-fit:cover;flex:0 0 auto}
+.brand-fallback{display:grid;place-items:center;background:var(--brand);color:#fff}
+.brand-txt{min-width:0}
+.brand-txt strong{display:block;font-size:.84rem;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-txt small{color:var(--muted);font-size:.64rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.nav{display:flex;flex-direction:column;gap:3px;flex:1;overflow:auto}
+.nav a{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;
+  color:var(--muted);font-weight:600;font-size:.83rem;transition:background .15s ease,color .15s ease;
+}
+.nav a:hover{background:var(--brand-100);color:var(--brand-600)}
+.nav a.active{background:var(--brand);color:#fff;box-shadow:0 6px 14px rgba(46,139,87,.26)}
+.sidebar-foot{border-top:1px solid var(--line);padding-top:10px;font-size:.7rem;color:var(--muted);line-height:1.45}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{
+  display:flex;align-items:center;gap:10px;padding:9px 16px;
+  background:var(--card);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:700;
+}
+.topbar h1{font-size:1rem;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-btn{display:none}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.user-menu{position:relative}
+.user-chip{
+  display:flex;align-items:center;gap:8px;padding:5px 8px 5px 5px;border-radius:11px;
+  border:1px solid var(--line);background:var(--card);cursor:pointer;font:inherit;color:var(--text);
+}
+.user-chip:hover{background:var(--brand-100)}
+.avatar{
+  width:27px;height:27px;border-radius:8px;background:var(--brand);color:#fff;
+  display:grid;place-items:center;font-weight:800;font-size:.7rem;flex:0 0 auto;
+}
+.user-meta{display:flex;flex-direction:column;align-items:flex-start;line-height:1.12;min-width:0}
+.user-meta strong{font-size:.76rem;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis}
+.user-meta small{font-size:.64rem;color:var(--muted)}
+.dropdown{
+  position:absolute;right:0;top:calc(100% + 6px);min-width:180px;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:5px;
+  display:flex;flex-direction:column;gap:2px;z-index:900;
+}
+.dropdown[hidden]{display:none}
+.dropdown a,.dropdown button{
+  display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
+  color:var(--text);font:inherit;font-size:.82rem;font-weight:600;background:none;border:none;
+  cursor:pointer;text-align:left;width:100%;
+}
+.dropdown a:hover,.dropdown button:hover{background:var(--brand-100);color:var(--brand-600)}
+.content{padding:14px 16px;max-width:1180px;width:100%;margin:0 auto;flex:1}
+@media(max-width:900px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-104%);transition:transform .25s ease;box-shadow:var(--shadow-lg);height:100vh}
+  .sidebar.open{transform:none}
+  .menu-btn{display:inline-grid}
+  .content{padding:12px}
+  .topbar{padding:9px 12px}
+  .user-meta{display:none}
+}
+
+/* ---------- Cards / layout ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.card + .card{margin-top:12px}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px;flex-wrap:wrap}
+.card-head h2,.card-head h3{display:flex;align-items:center;gap:7px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.grid-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+@media(max-width:1000px){.grid-stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:520px){.grid-stats{grid-template-columns:1fr}}
+.stat{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:12px 14px;display:flex;flex-direction:column;gap:3px;position:relative;overflow:hidden;
+}
+.stat::after{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--brand)}
+.stat.earth::after{background:var(--earth)}
+.stat.info::after{background:var(--info)}
+.stat.warn::after{background:var(--warn)}
+.stat .lbl{display:flex;align-items:center;gap:6px;font-size:.66rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.stat .val{font-size:1.42rem;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.stat .hint{font-size:.69rem;color:var(--muted)}
+.two-col{display:grid;grid-template-columns:1.35fr 1fr;gap:12px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}}
+
+/* ---------- Badges ---------- */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:.67rem;font-weight:700;white-space:nowrap}
+.badge::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.badge[data-status="Admitted"]{background:#e6f0fb;color:#1f6fb2}
+.badge[data-status="Under Treatment"]{background:#fdf0d9;color:#a86a08}
+.badge[data-status="Recovering"]{background:#efe8fb;color:#6a44b8}
+.badge[data-status="Ready for Release"]{background:#e2f5e9;color:#1f7a4c}
+.badge[data-status="Released"]{background:#d9f2e3;color:#12693f}
+.badge[data-status="Transferred"]{background:#f7ecdd;color:#9a6a2f}
+.badge[data-status="Deceased"]{background:#fbe7e5;color:#a4342a}
+[data-theme="dark"] .badge[data-status="Admitted"]{background:rgba(64,150,220,.18);color:#7dbcf0}
+[data-theme="dark"] .badge[data-status="Under Treatment"]{background:rgba(224,169,75,.18);color:#e6bb6b}
+[data-theme="dark"] .badge[data-status="Recovering"]{background:rgba(150,110,220,.18);color:#b79bf0}
+[data-theme="dark"] .badge[data-status="Ready for Release"]{background:rgba(69,181,124,.18);color:#6fd3a0}
+[data-theme="dark"] .badge[data-status="Released"]{background:rgba(69,181,124,.24);color:#7ddcae}
+[data-theme="dark"] .badge[data-status="Transferred"]{background:rgba(201,151,95,.18);color:#dbb083}
+[data-theme="dark"] .badge[data-status="Deceased"]{background:rgba(224,104,90,.18);color:#f0948a}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--bg-alt);color:var(--muted);font-size:.68rem;font-weight:700}
+.pill.warn{background:rgba(192,127,16,.14);color:var(--warn)}
+.pill.danger{background:rgba(192,57,43,.14);color:var(--danger)}
+.pill.ok{background:rgba(46,139,87,.14);color:var(--brand-600)}
+
+/* ---------- Tables ---------- */
+.table-wrap{overflow:auto;border-radius:11px;border:1px solid var(--line);background:var(--card)}
+table{width:100%;border-collapse:collapse;font-size:.81rem;min-width:560px}
+th{
+  text-align:left;padding:8px 10px;background:var(--bg-alt);color:var(--muted);
+  font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;font-weight:800;white-space:nowrap;
+}
+td{padding:8px 10px;border-top:1px solid var(--line);vertical-align:middle}
+tbody tr:hover{background:var(--brand-100)}
+.td-actions{display:flex;gap:4px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.77rem;font-weight:700}
+
+/* ---------- Bars / chart ---------- */
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:6px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.bar-track{width:100%;max-width:40px;flex:1;display:flex;align-items:flex-end;background:var(--bg-alt);border-radius:8px;overflow:hidden}
+.bar-fill{width:100%;background:linear-gradient(180deg,var(--brand),var(--brand-600));border-radius:8px;min-height:4px;transition:height .45s ease}
+.bar-count{font-size:.72rem;font-weight:800;margin-top:5px}
+.bar-label{font-size:.56rem;color:var(--muted);text-align:center;line-height:1.12;margin-top:1px;word-break:break-word;hyphens:auto}
+.hbar{display:flex;flex-direction:column;gap:9px}
+.hbar-row{display:grid;grid-template-columns:96px 1fr 32px;align-items:center;gap:9px;font-size:.8rem}
+.hbar-track{height:10px;border-radius:99px;background:var(--bg-alt);overflow:hidden}
+.hbar-fill{height:100%;border-radius:99px;background:var(--brand);transition:width .4s ease}
+.hbar-fill.earth{background:var(--earth)}
+.hbar-fill.danger{background:var(--danger)}
+
+/* ---------- Progress steps ---------- */
+.steps{display:flex;gap:4px;margin:4px 0 0}
+.step{flex:1;text-align:center;font-size:.58rem;color:var(--muted);line-height:1.15}
+.step .bar{height:6px;border-radius:99px;background:var(--bg-alt);margin-bottom:5px;transition:background .3s ease}
+.step.done .bar{background:var(--brand)}
+.step.current .bar{background:var(--brand);box-shadow:0 0 0 3px var(--brand-100)}
+.step.current{color:var(--brand-600);font-weight:800}
+
+/* ---------- Lists ---------- */
+.list{display:flex;flex-direction:column;gap:1px}
+.list-item{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:9px;border-bottom:1px solid var(--line)}
+.list-item:last-child{border-bottom:none}
+.list-item:hover{background:var(--brand-100)}
+.list-item .grow{flex:1;min-width:0}
+.list-item .grow strong{display:block;font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-item .grow small{color:var(--muted);font-size:.71rem}
+.thumb{width:32px;height:32px;border-radius:9px;object-fit:cover;background:var(--bg-alt);display:grid;place-items:center;color:var(--muted);flex:0 0 auto}
+
+/* ---------- Empty state ---------- */
+.empty{text-align:center;padding:26px 14px;color:var(--muted)}
+.empty .em-ic{width:48px;height:48px;border-radius:15px;background:var(--brand-100);color:var(--brand-600);display:grid;place-items:center;margin:0 auto 10px}
+.empty h3{color:var(--text);margin-bottom:5px;font-size:.92rem}
+.empty p{font-size:.81rem;margin-bottom:12px}
+
+/* ---------- Toolbar ---------- */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:11px}
+.toolbar .grow{flex:1;min-width:170px}
+.search-wrap{position:relative;flex:1;min-width:180px}
+.search-wrap .ic{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search-wrap input{padding-left:33px}
+.toolbar select{width:auto;min-width:118px}
+@media(max-width:600px){
+  .toolbar select,.toolbar .btn{flex:1 1 auto}
+  .search-wrap{flex:1 1 100%}
+}
+
+/* ---------- Pagination ---------- */
+.pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;flex-wrap:wrap}
+.pager .pages{display:flex;gap:4px;flex-wrap:wrap}
+.page-btn{
+  min-width:29px;height:29px;border-radius:8px;border:1px solid var(--line);background:var(--card);
+  color:var(--text);font:inherit;font-size:.77rem;font-weight:700;cursor:pointer;
+}
+.page-btn.active{background:var(--brand);border-color:var(--brand);color:#fff}
+.page-btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- Settings ---------- */
+.settings-grid{display:grid;grid-template-columns:196px 1fr;gap:12px;align-items:start}
+@media(max-width:820px){.settings-grid{grid-template-columns:1fr}}
+.submenu{display:flex;flex-direction:column;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:var(--shadow)}
+.submenu button{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:none;
+  background:none;color:var(--muted);font:inherit;font-size:.81rem;font-weight:600;cursor:pointer;text-align:left;
+}
+.submenu button:hover{background:var(--brand-100);color:var(--brand-600)}
+.submenu button.active{background:var(--brand);color:#fff}
+@media(max-width:820px){
+  .submenu{flex-direction:row;overflow:auto;padding:5px}
+  .submenu button{white-space:nowrap}
+}
+.form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.logo-preview{width:60px;height:60px;border-radius:13px;object-fit:cover;background:var(--bg-alt);display:grid;place-items:center;color:var(--muted);border:1px dashed var(--line)}
+.photo-drop{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.photo-drop .preview{width:84px;height:84px;border-radius:13px;object-fit:cover;background:var(--bg-alt);display:grid;place-items:center;color:var(--muted);border:1px dashed var(--line);overflow:hidden}
+.photo-drop .preview img{width:100%;height:100%;object-fit:cover}
+
+/* ---------- Profile header ---------- */
+.profile-head{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.profile-photo{width:104px;height:104px;border-radius:15px;object-fit:cover;background:var(--bg-alt);display:grid;place-items:center;color:var(--muted);flex:0 0 auto;overflow:hidden}
+.profile-photo img{width:100%;height:100%;object-fit:cover}
+.profile-meta{flex:1;min-width:220px;display:flex;flex-direction:column;gap:9px}
+.profile-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px}
+.kv div span{display:block;font-size:.61rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:800;margin-bottom:2px}
+.kv div strong{font-size:.81rem;font-weight:600;word-break:break-word}
+
+/* ---------- Toast ---------- */
+#toast-wrap{position:fixed;bottom:16px;right:16px;display:flex;flex-direction:column;gap:8px;z-index:9999;max-width:calc(100vw - 32px)}
+.toast{
+  background:var(--card);border:1px solid var(--line);border-left:4px solid var(--brand);
+  padding:9px 13px;border-radius:10px;box-shadow:var(--shadow-lg);font-size:.82rem;font-weight:600;
+  min-width:190px;animation:toastIn .25s ease;display:flex;align-items:center;gap:8px;
+}
+.toast.error{border-left-color:var(--danger)}
+.toast.warn{border-left-color:var(--warn)}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- Modal ---------- */
+.modal-backdrop{position:fixed;inset:0;background:rgba(8,18,12,.5);display:grid;place-items:center;z-index:9000;padding:16px;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--card);border-radius:16px;max-width:540px;width:100%;padding:16px;
+  max-height:90vh;overflow:auto;box-shadow:var(--shadow-lg);border:1px solid var(--line);
+}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap}
+
+/* ---------- Print ---------- */
+#print-area{display:none}
+@media print{
+  .sidebar,.topbar,.no-print,.btn,.icon-btn,.pager,.toolbar,#toast-wrap,#modal-root{display:none!important}
+  body{background:#fff;color:#000}
+  body.printing #app{display:none!important}
+  body.printing #print-area{display:block!important}
+  .content{padding:0;max-width:none}
+  .card{box-shadow:none;border:1px solid #ddd}
+  .print-doc{font-family:Georgia,"Times New Roman",serif;color:#111;padding:10px}
+  .print-head{display:flex;align-items:center;gap:14px;border-bottom:3px solid #2e8b57;padding-bottom:12px;margin-bottom:16px}
+  .print-head img{width:56px;height:56px;object-fit:contain;border-radius:9px}
+  .print-head h2{margin:0;font-size:19px}
+  .print-head .sub{font-size:11px;color:#555}
+  .print-doc h3{margin:14px 0 9px;font-size:15px}
+  .print-doc table{width:100%;border-collapse:collapse;font-size:11px;margin-top:7px}
+  .print-doc th,.print-doc td{border:1px solid #ccc;padding:5px 7px;text-align:left}
+  .print-doc th{background:#f2f6f2}
+  .print-foot{margin-top:18px;font-size:10px;color:#666;border-top:1px solid #ddd;padding-top:9px}
+}
+
+/* ---------- Misc ---------- */
+.hidden{display:none!important}
+.text-right{text-align:right}
+.nowrap{white-space:nowrap}
+.alert{
+  display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border-radius:10px;
+  font-size:.81rem;font-weight:600;border:1px solid transparent;margin-bottom:12px;
+}
+.alert.warn{background:rgba(192,127,16,.1);border-color:rgba(192,127,16,.3);color:var(--warn)}
+.alert.ok{background:rgba(46,139,87,.1);border-color:rgba(46,139,87,.3);color:var(--brand-600)}
+.alert.info{background:rgba(42,111,176,.1);border-color:rgba(42,111,176,.3);color:var(--info)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-wrap"></div>
+<div id="print-area"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   1. BRAND LOGO (inline SVG, no external files)
+   ========================================================= */
+const LOGO_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+    '<defs><linearGradient id="rr-bg" x1="0" y1="0" x2="1" y2="1">' +
+      '<stop offset="0" stop-color="#3aa66a"/>' +
+      '<stop offset="1" stop-color="#1f5f3e"/>' +
+    '</linearGradient></defs>' +
+    '<rect width="64" height="64" rx="15" fill="url(#rr-bg)"/>' +
+    '<rect x="2" y="2" width="60" height="60" rx="13" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1.5"/>' +
+    '<path d="M32 10 L48 16 L48 30 C48 41 41 48 32 52 C23 48 16 41 16 30 L16 16 Z" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1.5"/>' +
+    '<path d="M32 33c-6 0-11 3.6-11 8 0 3.8 4 6.2 11 6.2s11-2.4 11-6.2c0-4.4-5-8-11-8z" fill="#ffffff"/>' +
+    '<ellipse cx="22" cy="26" rx="3" ry="3.8" fill="#ffffff"/>' +
+    '<ellipse cx="28.5" cy="21.5" rx="3" ry="3.8" fill="#ffffff"/>' +
+    '<ellipse cx="35.5" cy="21.5" rx="3" ry="3.8" fill="#ffffff"/>' +
+    '<ellipse cx="42" cy="26" rx="3" ry="3.8" fill="#ffffff"/>' +
+  '</svg>';
+const LOGO_DATA = 'data:image/svg+xml;utf8,' + encodeURIComponent(LOGO_SVG);
+
+/* =========================================================
+   2. CONSTANTS
+   ========================================================= */
+const K = {
+  USERS:'users', COMPANY:'company', ANIMALS:'animals',
+  LOGS:'careLogs', RELEASES:'releases', SESSION:'session', PREFS:'preferences'
+};
+const STATUSES   = ['Admitted','Under Treatment','Recovering','Ready for Release','Released','Transferred','Deceased'];
+const PROGRESS   = ['Admitted','Under Treatment','Recovering','Ready for Release','Released'];
+const CLOSED     = ['Released','Transferred','Deceased'];
+const SPECIES    = ['Bird','Mammal','Reptile','Amphibian','Fish','Invertebrate'];
+const CARE_TYPES = ['Medication','Feeding','Weight','Treatment','Checkup','Note'];
+const OUTCOMES   = ['Released','Transferred','Deceased'];
+const ROLES      = ['Admin','Vet','Volunteer'];
+
+const NAV = [
+  {hash:'#/dashboard', label:'Dashboard',  icon:'grid'},
+  {hash:'#/intake',    label:'Add Animal', icon:'plus'},
+  {hash:'#/animals',   label:'Animal List',icon:'paw'},
+  {hash:'#/carelog',   label:'Care Log',   icon:'clipboard'},
+  {hash:'#/releases',  label:'Releases',   icon:'plane'},
+  {hash:'#/settings',  label:'Settings',   icon:'gear', roles:['Admin','Vet']}
+];
+
+const SETTINGS_TABS = [
+  {id:'company',     label:'Company',      icon:'paw'},
+  {id:'location',    label:'Location',     icon:'mapPin'},
+  {id:'contact',     label:'Contact',      icon:'phone'},
+  {id:'operations',  label:'Operations',   icon:'gear'},
+  {id:'staff',       label:'Staff / Users',icon:'user', roles:['Admin']},
+  {id:'preferences', label:'Preferences',  icon:'sun'},
+  {id:'data',        label:'Data / Backup',icon:'download'},
+  {id:'account',     label:'My Account',   icon:'user'}
+];
+
+const DEFAULT_PREFS = {
+  theme:'light', dateFormat:'MMM D, YYYY', weightUnit:'g',
+  language:'en', dailyReminders:true, lastBackup:null
+};
+
+const DEFAULT_COMPANY = {
+  name:'RehabRangers Wildlife Center',
+  orgType:'Wildlife Rehabilitation Center',
+  permit:'WRC-2021-0457',
+  established:'2019-03-12',
+  about:'A community-run rehabilitation center dedicated to rescuing, treating and releasing native wildlife across Southern Luzon.',
+  logo: LOGO_DATA,
+  street:'12 Forest Lane', barangay:'Brgy. Malinao', city:'Los Baños',
+  province:'Laguna', postal:'4030', country:'Philippines',
+  lat:'14.1699', lng:'121.2440', serviceArea:'Laguna, Batangas, Quezon',
+  contactPerson:'Dr. Elena Reyes', position:'Center Director',
+  phone:'+63 912 345 6789', altPhone:'', hotline:'+63 917 000 1122',
+  email:'info@rehabrangers.org', website:'www.rehabrangers.org',
+  facebook:'/rehabrangers', instagram:'@rehabrangers', showContact:true,
+  hours:'Mon–Sat 8:00 AM – 6:00 PM', emergency24:true, capacity:25,
+  prefix:'RR', speciesAccepted:['Bird','Mammal','Reptile','Amphibian'],
+  vetOnCall:'Dr. Marco Santos', inviteCode:'RR-2024'
+};
+
+/* =========================================================
+   3. STORAGE HELPERS
+   ========================================================= */
+function read(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    if(raw === null || raw === undefined) return fallback;
+    const val = JSON.parse(raw);
+    return val === null ? fallback : val;
+  }catch(e){ return fallback; }
+}
+function write(key, value){
+  try{ localStorage.setItem(key, JSON.stringify(value)); }
+  catch(e){ showToast('Storage full — try removing photos or exporting a backup.','error'); }
+}
+function getAll(key){
+  const v = read(key, []);
+  return Array.isArray(v) ? v : [];
+}
+function saveAll(key, arr){ write(key, arr); }
+
+function company(){
+  const c = read(K.COMPANY, null);
+  return Object.assign({}, DEFAULT_COMPANY, c || {});
+}
+function saveCompany(patch){
+  const c = Object.assign(company(), patch);
+  write(K.COMPANY, c);
+  return c;
+}
+function prefs(){
+  const p = read(K.PREFS, null);
+  return Object.assign({}, DEFAULT_PREFS, p || {});
+}
+function savePrefs(patch){
+  const p = Object.assign(prefs(), patch);
+  write(K.PREFS, p);
+  return p;
+}
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', prefs().theme === 'dark' ? 'dark' : 'light');
+}
+
+/* =========================================================
+   4. UTILITIES
+   ========================================================= */
+function esc(s){
+  return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function generateId(prefix){
+  return (prefix || 'id') + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+}
+function todayISO(){
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+}
+function formatDate(iso){
+  if(!iso) return '—';
+  const raw = String(iso);
+  const d = new Date(raw.length === 10 ? raw + 'T00:00:00' : raw);
+  if(isNaN(d.getTime())) return '—';
+  const fmt = prefs().dateFormat || 'MMM D, YYYY';
+  const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  if(fmt === 'DD/MM/YYYY') return dd + '/' + mm + '/' + yyyy;
+  if(fmt === 'MM/DD/YYYY') return mm + '/' + dd + '/' + yyyy;
+  if(fmt === 'YYYY-MM-DD') return yyyy + '-' + mm + '-' + dd;
+  return M[d.getMonth()] + ' ' + d.getDate() + ', ' + yyyy;
+}
+function isSameMonth(iso, ref){
+  if(!iso) return false;
+  const d = new Date(String(iso).slice(0,10) + 'T00:00:00');
+  if(isNaN(d.getTime())) return false;
+  return d.getMonth() === ref.getMonth() && d.getFullYear() === ref.getFullYear();
+}
+function fmtWeight(grams){
+  const g = Number(grams);
+  if(!isFinite(g) || g <= 0) return '—';
+  const unit = prefs().weightUnit || 'g';
+  if(unit === 'kg') return (g/1000).toFixed(2) + ' kg';
+  if(unit === 'lb') return (g/453.59237).toFixed(2) + ' lb';
+  return Math.round(g) + ' g';
+}
+function initials(name){
+  return String(name || '?').trim().split(/\s+/).slice(0,2).map(function(w){ return w.charAt(0).toUpperCase(); }).join('') || '?';
+}
+function debounce(fn, ms){
+  let t;
+  return function(){
+    const args = arguments, ctx = this;
+    clearTimeout(t);
+    t = setTimeout(function(){ fn.apply(ctx, args); }, ms);
+  };
+}
+
+/* ---------- Toast ---------- */
+function showToast(message, type){
+  const wrap = document.getElementById('toast-wrap');
+  if(!wrap) return;
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  const ic = type === 'error' ? 'close' : (type === 'warn' ? 'bell' : 'check');
+  el.innerHTML = icon(ic, 16) + '<span>' + esc(message) + '</span>';
+  wrap.appendChild(el);
+  setTimeout(function(){
+    el.style.transition = 'opacity .3s ease, transform .3s ease';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(8px)';
+    setTimeout(function(){ el.remove(); }, 320);
+  }, 3000);
+}
+
+/* ---------- Modal ---------- */
+function openModal(title, bodyHTML, buttons){
+  const root = document.getElementById('modal-root');
+  root.innerHTML =
+    '<div class="modal-backdrop" data-backdrop="1">' +
+      '<div class="modal" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
+        '<div class="modal-head"><h3>' + esc(title) + '</h3>' +
+          '<button class="icon-btn" data-action="close-modal" aria-label="Close">' + icon('close',16) + '</button>' +
+        '</div>' +
+        '<div class="modal-body">' + bodyHTML + '</div>' +
+        '<div class="modal-foot">' +
+          (buttons || []).map(function(b, i){
+            return '<button class="btn ' + (b.cls || 'btn-ghost') + '" data-mbtn="' + i + '">' + esc(b.label) + '</button>';
+          }).join('') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  const backdrop = root.querySelector('[data-backdrop]');
+  if(backdrop){
+    backdrop.addEventListener('click', function(e){ if(e.target === backdrop) closeModal(); });
+  }
+  (buttons || []).forEach(function(b, i){
+    const btn = root.querySelector('[data-mbtn="' + i + '"]');
+    if(btn) btn.addEventListener('click', function(){ if(typeof b.onClick === 'function') b.onClick(); });
+  });
+  return root;
+}
+function closeModal(){
+  const root = document.getElementById('modal-root');
+  if(root) root.innerHTML = '';
+}
+function confirmModal(title, message, onYes, danger){
+  openModal(title, '<p class="muted">' + esc(message) + '</p>', [
+    {label:'Cancel', cls:'btn-ghost', onClick: closeModal},
+    {label: danger === false ? 'Confirm' : 'Delete', cls: danger === false ? 'btn-primary' : 'btn-danger',
+      onClick: function(){ closeModal(); onYes(); }}
+  ]);
+}
+
+/* ---------- Print ---------- */
+function printHTML(title, inner){
+  const c = company();
+  const logo = c.logo ? '<img src="' + esc(c.logo) + '" alt="logo">' : '';
+  const contactBits = [];
+  if(c.phone) contactBits.push(c.phone);
+  if(c.email) contactBits.push(c.email);
+  if(c.website) contactBits.push(c.website);
+  const contact = c.showContact !== false && contactBits.length
+    ? '<div class="sub">' + esc(contactBits.join('  ·  ')) + '</div>' : '';
+  const addr = c.showContact !== false
+    ? '<div class="sub">' + esc([c.street, c.barangay, c.city, c.province].filter(Boolean).join(', ')) + '</div>' : '';
+  const area = document.getElementById('print-area');
+  area.innerHTML =
+    '<div class="print-doc">' +
+      '<div class="print-head">' + logo +
+        '<div><h2>' + esc(c.name) + '</h2>' +
+          '<div class="sub">' + esc(c.orgType || '') + '</div>' + addr + contact +
+        '</div>' +
+      '</div>' +
+      '<h3>' + esc(title) + '</h3>' + inner +
+      '<div class="print-foot">Generated ' + esc(formatDate(todayISO())) + ' · RehabRangers</div>' +
+    '</div>';
+  document.body.classList.add('printing');
+  window.onafterprint = function(){
+    document.body.classList.remove('printing');
+    area.innerHTML = '';
+  };
+  setTimeout(function(){ window.print(); }, 60);
+}
+
+/* ---------- Download ---------- */
+function downloadFile(filename, content, mime){
+  try{
+    const blob = new Blob([content], {type: mime || 'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  }catch(e){ showToast('Download failed.', 'error'); }
+}
+function csvCell(v){
+  const s = String(v === null || v === undefined ? '' : v);
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+function toCSV(headers, rows){
+  const lines = [headers.map(csvCell).join(',')];
+  rows.forEach(function(r){ lines.push(r.map(csvCell).join(',')); });
+  return lines.join('\r\n');
+}
+
+/* ---------- Image resize ---------- */
+function resizeImage(file, max){
+  max = max || 400;
+  return new Promise(function(resolve, reject){
+    const reader = new FileReader();
+    reader.onload = function(){
+      const img = new Image();
+      img.onload = function(){
+        let w = img.width, h = img.height;
+        const scale = Math.min(1, max / Math.max(w, h));
+        w = Math.max(1, Math.round(w * scale));
+        h = Math.max(1, Math.round(h * scale));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        try{ resolve(cv.toDataURL('image/jpeg', 0.82)); }
+        catch(e){ reject(e); }
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- Password hashing ---------- */
+async function hashPassword(pw){
+  const text = 'rr$' + String(pw);
+  if(window.crypto && window.crypto.subtle && window.TextEncoder){
+    try{
+      const buf = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+    }catch(e){ /* fall through to fallback */ }
+  }
+  let h1 = 0x811c9dc5, h2 = 0x1000193;
+  for(let i = 0; i < text.length; i++){
+    h1 ^= text.charCodeAt(i); h1 = Math.imul(h1, 16777619) >>> 0;
+    h2 = Math.imul(h2 ^ text.charCodeAt(i), 2654435761) >>> 0;
+  }
+  return 'fb' + h1.toString(16).padStart(8,'0') + h2.toString(16).padStart(8,'0');
+}
+
+/* =========================================================
+   5. ICONS
+   ========================================================= */
+const ICONS = {
+  grid:'<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+  plus:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+  paw:'<circle cx="7" cy="9" r="1.9"/><circle cx="12" cy="6.6" r="1.9"/><circle cx="17" cy="9" r="1.9"/><path d="M8.4 14.4c1-1.5 2.1-2.4 3.6-2.4s2.6.9 3.6 2.4c.9 1.3.3 3.2-1.3 3.6-1 .3-1.7-.2-2.3-.2s-1.3.5-2.3.2c-1.6-.4-2.2-2.3-1.3-3.6z"/>',
+  clipboard:'<rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9.5 4V2.8h5V4"/><path d="M9 10h6M9 14h6M9 18h3"/>',
+  plane:'<path d="M4 12l16-8-6.2 16-2.6-6.2z"/><path d="M11.2 13.8L20 4"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+  logout:'<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6.2 8-6.2S20 17 20 21"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/>',
+  trash:'<path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>',
+  pen:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  printer:'<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 17h12v4H6z"/>',
+  download:'<path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 21h16"/>',
+  upload:'<path d="M12 21V9"/><path d="M7 13l5-5 5 5"/><path d="M4 3h16"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>',
+  moon:'<path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.6 6.6 0 0 0 9.8 9.8z"/>',
+  bell:'<path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/>',
+  close:'<path d="M6 6l12 12M18 6L6 18"/>',
+  check:'<path d="M20 6L9 17l-5-5"/>',
+  camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  mapPin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
+  phone:'<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/>',
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  arrowLeft:'<path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>',
+  chevronDown:'<path d="M6 9l6 6 6-6"/>',
+  menu:'<path d="M3 6h18M3 12h18M3 18h18"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/>',
+  heart:'<path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 1 0-7.4 7.4L12 21l8.8-8a5.2 5.2 0 0 0 0-7.4z"/>',
+  scale:'<path d="M12 3v18"/><path d="M6 21h12"/><path d="M4 7h16"/><path d="M4 7l-2 6a3 3 0 0 0 6 0z"/><path d="M20 7l2 6a3 3 0 0 1-6 0z"/>',
+  lock:'<rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
+};
+function icon(name, size){
+  const path = ICONS[name] || '';
+  const s = size || 18;
+  return '<svg class="ic" width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" ' +
+         'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+         path + '</svg>';
+}
+
+/* =========================================================
+   6. APPLICATION STATE
+   ========================================================= */
+const state = {
+  authMode:'signin',
+  route:'#/dashboard',
+  settingsTab:'company',
+  list:{q:'', status:'all', species:'all', sort:'newest', page:1},
+  pendingPhoto:null
+};
+
+/* =========================================================
+   7. AUTH
+   ========================================================= */
+function users(){ return getAll(K.USERS); }
+function currentUser(){
+  const s = read(K.SESSION, null);
+  if(!s || !s.userId) return null;
+  return users().find(function(u){ return u.id === s.userId; }) || null;
+}
+function signOut(){
+  localStorage.removeItem(K.SESSION);
+  closeModal();
+  state.authMode = 'signin';
+  location.hash = '';
+  render();
+  showToast('Signed out successfully.');
+}
+function passwordIssues(pw){
+  const issues = [];
+  if(String(pw).length < 8) issues.push('at least 8 characters');
+  if(!/[A-Z]/.test(pw)) issues.push('1 uppercase letter');
+  if(!/[0-9]/.test(pw)) issues.push('1 number');
+  return issues;
+}
+function passwordScore(pw){
+  let score = 0;
+  if(String(pw).length >= 8) score++;
+  if(/[A-Z]/.test(pw)) score++;
+  if(/[0-9]/.test(pw)) score++;
+  if(/[^A-Za-z0-9]/.test(pw)) score++;
+  if(String(pw).length >= 12) score++;
+  return score;
+}
+
+function authHTML(){
+  const c = company();
+  const signup = state.authMode === 'signup';
+  const savedEmail = localStorage.getItem('rr_last_email') || '';
+
+  const brandLogo = c.logo
+    ? '<img src="' + esc(c.logo) + '" alt="RehabRangers logo">'
+    : icon('paw', 26);
+
+  const side =
+    '<div class="auth-side">' +
+      '<div>' +
+        '<div class="logo-row">' + brandLogo + '<span>RehabRangers</span></div>' +
+        '<h2 style="margin-top:20px">Every rescue deserves a record.</h2>' +
+        '<p>Register rescues, log daily care, track recovery and record releases — all in one place for your rehabilitation center.</p>' +
+      '</div>' +
+      '<div class="auth-feats">' +
+        '<div class="auth-feat"><span class="dot">' + icon('clipboard',13) + '</span> Intake &amp; care logging</div>' +
+        '<div class="auth-feat"><span class="dot">' + icon('heart',13) + '</span> Recovery progress tracking</div>' +
+        '<div class="auth-feat"><span class="dot">' + icon('plane',13) + '</span> Release &amp; outcome reporting</div>' +
+      '</div>' +
+    '</div>';
+
+  let form;
+  if(!signup){
+    form =
+      '<h1>Welcome back</h1>' +
+      '<p class="sub">Sign in to ' + esc(c.name) + '</p>' +
+      '<div class="auth-err" id="auth-err"></div>' +
+      '<form id="signin-form" novalidate>' +
+        '<div class="field">' +
+          '<label for="si-email">Email or username</label>' +
+          '<input id="si-email" name="email" type="text" autocomplete="username" placeholder="admin@demo.com" value="' + esc(savedEmail) + '" required>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label for="si-pass">Password</label>' +
+          '<div class="pass-wrap">' +
+            '<input id="si-pass" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>' +
+            '<button type="button" class="pass-toggle" data-pass-toggle="si-pass" aria-label="Show password">' + icon('eye',16) + '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 0 14px">' +
+          '<label class="check"><input type="checkbox" name="remember" ' + (savedEmail ? 'checked' : '') + '> Remember me</label>' +
+        '</div>' +
+        '<button class="btn btn-primary btn-block" type="submit">Sign In</button>' +
+      '</form>' +
+      '<p class="muted" style="margin-top:14px;text-align:center">No account yet? ' +
+        '<button class="link-btn" id="go-signup" type="button">Create one</button></p>' +
+      '<p class="muted" style="margin-top:8px;text-align:center;font-size:.73rem">Demo: admin@demo.com / Admin123</p>';
+  } else {
+    form =
+      '<h1>Create your account</h1>' +
+      '<p class="sub">Join ' + esc(c.name) + '</p>' +
+      '<div class="auth-err" id="auth-err"></div>' +
+      '<form id="signup-form" novalidate>' +
+        '<div class="row">' +
+          '<div class="field"><label for="su-name">Full name</label><input id="su-name" name="name" type="text" autocomplete="name" required></div>' +
+          '<div class="field"><label for="su-phone">Phone</label><input id="su-phone" name="phone" type="tel" autocomplete="tel" placeholder="+63 912 345 6789"></div>' +
+        '</div>' +
+        '<div class="row">' +
+          '<div class="field"><label for="su-email">Email</label><input id="su-email" name="email" type="email" autocomplete="email" required></div>' +
+          '<div class="field"><label for="su-role">Role</label>' +
+            '<select id="su-role" name="role">' + ROLES.map(function(r){ return '<option value="' + r + '">' + r + '</option>'; }).join('') + '</select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label for="su-pass">Password</label>' +
+          '<div class="pass-wrap">' +
+            '<input id="su-pass" name="password" type="password" autocomplete="new-password" required>' +
+            '<button type="button" class="pass-toggle" data-pass-toggle="su-pass" aria-label="Show password">' + icon('eye',16) + '</button>' +
+          '</div>' +
+          '<div class="strength"><span id="pw-bar"></span></div>' +
+          '<div class="strength-txt" id="pw-txt">Min 8 characters, 1 uppercase letter, 1 number.</div>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label for="su-pass2">Confirm password</label>' +
+          '<input id="su-pass2" name="password2" type="password" autocomplete="new-password" required>' +
+        '</div>' +
+        '<div class="field">' +
+          '<span class="lbl">Organization</span>' +
+          '<div class="seg">' +
+            '<label><input type="radio" name="org" value="create" checked> Create a new center</label>' +
+            '<label><input type="radio" name="org" value="join"> Join with invite code</label>' +
+          '</div>' +
+          '<div id="org-create-box"><input name="centerName" type="text" placeholder="Center name" value="' + esc(c.name) + '"></div>' +
+          '<div id="org-join-box" class="hidden"><input name="inviteCode" type="text" placeholder="Invite code (e.g. ' + esc(c.inviteCode || 'RR-2024') + ')"></div>' +
+        '</div>' +
+        '<label class="check" style="margin:4px 0 14px"><input type="checkbox" name="terms" id="su-terms"> I agree to the terms of service and data policy</label>' +
+        '<button class="btn btn-primary btn-block" type="submit">Create Account</button>' +
+      '</form>' +
+      '<p class="muted" style="margin-top:14px;text-align:center">Already registered? ' +
+        '<button class="link-btn" id="go-signin" type="button">Sign in</button></p>';
+  }
+
+  return '<div class="auth-wrap"><div class="auth-card">' + side + '<div class="auth-main">' + form + '</div></div></div>';
+}
+
+function showAuthError(msg){
+  const el = document.getElementById('auth-err');
+  if(el){ el.textContent = msg; el.classList.add('show'); }
+}
+
+function bindAuth(){
+  const goSignup = document.getElementById('go-signup');
+  const goSignin = document.getElementById('go-signin');
+  if(goSignup) goSignup.addEventListener('click', function(){ state.authMode = 'signup'; render(); });
+  if(goSignin) goSignin.addEventListener('click', function(){ state.authMode = 'signin'; render(); });
+
+  document.querySelectorAll('[data-pass-toggle]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      const input = document.getElementById(btn.dataset.passToggle);
+      if(!input) return;
+      const isPass = input.type === 'password';
+      input.type = isPass ? 'text' : 'password';
+      btn.innerHTML = icon(isPass ? 'close' : 'eye', 16);
+      btn.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
+    });
+  });
+
+  const signin = document.getElementById('signin-form');
+  if(signin){
+    signin.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const email = String(signin.email.value || '').trim().toLowerCase();
+      const pass = String(signin.password.value || '');
+      if(!email || !pass){ showAuthError('Please enter your email and password.'); return; }
+      const hash = await hashPassword(pass);
+      const u = users().find(function(x){
+        return (String(x.email).toLowerCase() === email || String(x.name).toLowerCase() === email) && x.pass === hash;
+      });
+      if(!u){ showAuthError('Invalid email or password. Please try again.'); return; }
+      if(u.status === 'inactive'){ showAuthError('This account has been deactivated. Contact an administrator.'); return; }
+      write(K.SESSION, {userId:u.id, at:Date.now()});
+      if(signin.remember.checked) localStorage.setItem('rr_last_email', u.email);
+      else localStorage.removeItem('rr_last_email');
+      state.authMode = 'signin';
+      if(!location.hash) location.hash = '#/dashboard';
+      render();
+      showToast('Welcome back, ' + u.name.split(' ')[0] + '!');
+    });
+  }
+
+  const signup = document.getElementById('signup-form');
+  if(signup){
+    const pw = document.getElementById('su-pass');
+    const bar = document.getElementById('pw-bar');
+    const txt = document.getElementById('pw-txt');
+    pw.addEventListener('input', function(){
+      const score = passwordScore(pw.value);
+      const pct = Math.min(100, Math.round(score/5*100));
+      bar.style.width = pct + '%';
+      bar.style.background = score <= 1 ? 'var(--danger)' : score === 2 ? 'var(--warn)' : 'var(--brand)';
+      const issues = passwordIssues(pw.value);
+      txt.textContent = pw.value.length === 0
+        ? 'Min 8 characters, 1 uppercase letter, 1 number.'
+        : (issues.length ? 'Still needed: ' + issues.join(', ') + '.' : 'Strong password ✓');
+      txt.style.color = issues.length ? 'var(--muted)' : 'var(--brand-600)';
+    });
+
+    signup.querySelectorAll('input[name="org"]').forEach(function(r){
+      r.addEventListener('change', function(){
+        const isJoin = signup.querySelector('input[name="org"]:checked').value === 'join';
+        document.getElementById('org-create-box').classList.toggle('hidden', isJoin);
+        document.getElementById('org-join-box').classList.toggle('hidden', !isJoin);
+      });
+    });
+
+    signup.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const name = String(signup.name.value || '').trim();
+      const email = String(signup.email.value || '').trim().toLowerCase();
+      const phone = String(signup.phone.value || '').trim();
+      const role = signup.role.value;
+      const pass = String(signup.password.value || '');
+      const pass2 = String(signup.password2.value || '');
+      const terms = document.getElementById('su-terms').checked;
+      const orgMode = signup.querySelector('input[name="org"]:checked').value;
+
+      if(!name || !email || !pass || !pass2){ showAuthError('Please fill in all required fields.'); return; }
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showAuthError('Please enter a valid email address.'); return; }
+      if(users().some(function(u){ return String(u.email).toLowerCase() === email; })){
+        showAuthError('An account with this email already exists.'); return;
+      }
+      const issues = passwordIssues(pass);
+      if(issues.length){ showAuthError('Password must contain ' + issues.join(', ') + '.'); return; }
+      if(pass !== pass2){ showAuthError('Passwords do not match.'); return; }
+      if(!terms){ showAuthError('Please accept the terms of service to continue.'); return; }
+
+      if(orgMode === 'join'){
+        const code = String(signup.inviteCode.value || '').trim();
+        if(code.toUpperCase() !== String(company().inviteCode || '').toUpperCase()){
+          showAuthError('Invalid invite code. Ask your administrator for the correct code.'); return;
+        }
+      } else {
+        const centerName = String(signup.centerName.value || '').trim();
+        if(centerName) saveCompany({name:centerName});
+      }
+
+      const newUser = {
+        id: generateId('u'),
+        name: name, email: email, phone: phone, role: role,
+        pass: await hashPassword(pass),
+        status: 'active',
+        createdAt: new Date().toISOString()
+      };
+      const list = users();
+      list.push(newUser);
+      saveAll(K.USERS, list);
+      write(K.SESSION, {userId:newUser.id, at:Date.now()});
+      location.hash = '#/dashboard';
+      render();
+      showToast('Account created. Welcome, ' + name.split(' ')[0] + '!');
+    });
+  }
+}
+
+/* =========================================================
+   8. SEED DATA
+   ========================================================= */
+function inMonth(back){
+  const d = new Date();
+  d.setDate(Math.max(1, d.getDate() - back));
+  return d.toISOString().slice(0,10);
+}
+function dayOffset(n){
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+
+function seedSampleData(){
+  const animals = [
+    {id:'RR-0001', species:'Bird', commonName:'Philippine Scops Owl', ageClass:'Juvenile', sex:'Unknown', weight:118,
+     dateFound:dayOffset(-38), locationFound:'Brgy. San Antonio, Los Baños', foundBy:'Ramon Cruz', contact:'0917 555 0101',
+     reason:'Orphaned', conditionNotes:'Fell from nest. No visible injury, hand-feeding started immediately.',
+     status:'Recovering', photo:'', createdAt:dayOffset(-38)},
+    {id:'RR-0002', species:'Mammal', commonName:'Asian Palm Civet', ageClass:'Adult', sex:'Female', weight:2450,
+     dateFound:dayOffset(-30), locationFound:'Brgy. Timugan, Los Baños', foundBy:'Liza Mendoza', contact:'0918 222 3344',
+     reason:'Injury', conditionNotes:'Snare wound on left forelimb. Wound cleaned and bandaged, antibiotics started.',
+     status:'Under Treatment', photo:'', createdAt:dayOffset(-30)},
+    {id:'RR-0003', species:'Mammal', commonName:'Long-tailed Macaque', ageClass:'Juvenile', sex:'Male', weight:1800,
+     dateFound:dayOffset(-22), locationFound:'Mt. Makiling Trail', foundBy:'Forest Ranger Unit', contact:'0920 111 2233',
+     reason:'Other', conditionNotes:'Confiscated from illegal pet trade. Socialization and forest readiness training ongoing.',
+     status:'Ready for Release', photo:'', createdAt:dayOffset(-22)},
+    {id:'RR-0004', species:'Reptile', commonName:'Philippine Cobra', ageClass:'Adult', sex:'Unknown', weight:640,
+     dateFound:dayOffset(-18), locationFound:'Residential area, Bay', foundBy:'Bay Rescue Team', contact:'0999 888 7777',
+     reason:'Other', conditionNotes:'Relocated from a household. Under observation before release back to habitat.',
+     status:'Admitted', photo:'', createdAt:dayOffset(-18)},
+    {id:'RR-0005', species:'Mammal', commonName:'Large Flying Fox', ageClass:'Adult', sex:'Female', weight:310,
+     dateFound:dayOffset(-14), locationFound:'Brgy. Batong Malake', foundBy:'Jun Perez', contact:'0917 444 5566',
+     reason:'Illness', conditionNotes:'Dehydrated on arrival, wing membrane tear on the right side. Fluids given.',
+     status:'Under Treatment', photo:'', createdAt:dayOffset(-14)},
+    {id:'RR-0006', species:'Reptile', commonName:'Water Monitor Lizard', ageClass:'Juvenile', sex:'Unknown', weight:890,
+     dateFound:dayOffset(-10), locationFound:'Creek near UPLB', foundBy:'Student Volunteers', contact:'0915 333 7788',
+     reason:'Injury', conditionNotes:'Laceration on tail from dog bite. Healing well, appetite normal.',
+     status:'Recovering', photo:'', createdAt:dayOffset(-10)},
+    {id:'RR-0007', species:'Bird', commonName:'Collared Kingfisher', ageClass:'Adult', sex:'Male', weight:68,
+     dateFound:dayOffset(-7), locationFound:'Brgy. Mayondon', foundBy:'Aileen Tan', contact:'0916 121 9090',
+     reason:'Injury', conditionNotes:'Wing sprain, flight test passed. Ready for a soft release.',
+     status:'Ready for Release', photo:'', createdAt:dayOffset(-7)},
+    {id:'RR-0008', species:'Reptile', commonName:'Green Sea Turtle', ageClass:'Juvenile', sex:'Female', weight:4200,
+     dateFound:dayOffset(-4), locationFound:'San Juan Shoreline', foundBy:'Coastal Guard', contact:'0927 654 3210',
+     reason:'Illness', conditionNotes:'Entangled in fishing net, minor flipper abrasions. Swimming normally.',
+     status:'Admitted', photo:'', createdAt:dayOffset(-4)},
+    {id:'RR-0009', species:'Bird', commonName:'Blue-naped Parrot', ageClass:'Adult', sex:'Male', weight:145,
+     dateFound:dayOffset(-52), locationFound:'Brgy. Putho-Tuntungin', foundBy:'Marites Lim', contact:'0918 777 8899',
+     reason:'Other', conditionNotes:'Confiscated from a wildlife trader. Fully recovered, released back into the watershed.',
+     status:'Released', photo:'', createdAt:dayOffset(-52)},
+    {id:'RR-0010', species:'Bird', commonName:'Brahminy Kite', ageClass:'Adult', sex:'Female', weight:780,
+     dateFound:dayOffset(-45), locationFound:'Brgy. Lalakay', foundBy:'Rico Dizon', contact:'0919 232 4455',
+     reason:'Injury', conditionNotes:'Fractured wing. Transferred to the regional raptor facility for specialist surgery.',
+     status:'Transferred', photo:'', createdAt:dayOffset(-45)}
+  ];
+
+  const logs = [
+    {id:generateId('cl'), animalId:'RR-0001', date:dayOffset(-36), type:'Feeding', weight:0, notes:'Started on insect mash, 4 feeds per day.', staff:'Ana Cruz', nextDue:dayOffset(1), done:false},
+    {id:generateId('cl'), animalId:'RR-0001', date:dayOffset(-28), type:'Weight', weight:96, notes:'Gaining steadily.', staff:'Dr. Marco Santos', nextDue:'', done:false},
+    {id:generateId('cl'), animalId:'RR-0001', date:dayOffset(-12), type:'Checkup', weight:118, notes:'Feather condition improved. Still flightless.', staff:'Dr. Marco Santos', nextDue:dayOffset(0), done:false},
+    {id:generateId('cl'), animalId:'RR-0002', date:dayOffset(-29), type:'Treatment', weight:0, notes:'Wound cleaned with saline, antibiotic ointment applied.', staff:'Dr. Marco Santos', nextDue:dayOffset(0), done:false},
+    {id:generateId('cl'), animalId:'RR-0002', date:dayOffset(-20), type:'Medication', weight:0, notes:'Amoxicillin 0.2 ml given orally.', staff:'Dr. Marco Santos', nextDue:dayOffset(2), done:false},
+    {id:generateId('cl'), animalId:'RR-0002', date:dayOffset(-6), type:'Weight', weight:2450, notes:'Weight stable, wound healing well.', staff:'Ana Cruz', nextDue:'', done:false},
+    {id:generateId('cl'), animalId:'RR-0003', date:dayOffset(-20), type:'Feeding', weight:0, notes:'Fruit and leafy greens accepted well.', staff:'Ana Cruz', nextDue:dayOffset(1), done:false},
+    {id:generateId('cl'), animalId:'RR-0003', date:dayOffset(-9), type:'Checkup', weight:1800, notes:'Behavioral assessment passed. Enclosure enrichment added.', staff:'Dr. Elena Reyes', nextDue:'', done:false},
+    {id:generateId('cl'), animalId:'RR-0005', date:dayOffset(-13), type:'Treatment', weight:0, notes:'Fluid therapy, wing membrane cleaned.', staff:'Dr. Marco Santos', nextDue:dayOffset(0), done:false},
+    {id:generateId('cl'), animalId:'RR-0005', date:dayOffset(-5), type:'Weight', weight:310, notes:'Slight weight gain, feeding on fruit puree.', staff:'Ana Cruz', nextDue:'', done:false},
+    {id:generateId('cl'), animalId:'RR-0006', date:dayOffset(-8), type:'Treatment', weight:0, notes:'Tail wound cleaned, dressing changed.', staff:'Dr. Marco Santos', nextDue:dayOffset(3), done:false},
+    {id:generateId('cl'), animalId:'RR-0006', date:dayOffset(-2), type:'Feeding', weight:0, notes:'Ate 3 small fish, good appetite.', staff:'Ana Cruz', nextDue:dayOffset(0), done:false},
+    {id:generateId('cl'), animalId:'RR-0007', date:dayOffset(-5), type:'Checkup', weight:68, notes:'Flight test successful in the aviary.', staff:'Dr. Elena Reyes', nextDue:'', done:false},
+    {id:generateId('cl'), animalId:'RR-0008', date:dayOffset(-3), type:'Weight', weight:4200, notes:'Flipper abrasions drying. Swimming 20 mins/day.', staff:'Dr. Marco Santos', nextDue:dayOffset(4), done:false},
+    {id:generateId('cl'), animalId:'RR-0004', date:dayOffset(-17), type:'Note', weight:0, notes:'Handled with snake tongs only. Feeding on small rodents weekly.', staff:'Dr. Marco Santos', nextDue:dayOffset(5), done:false}
+  ];
+
+  const releases = [
+    {id:generateId('rl'), animalId:'RR-0009', outcome:'Released', date:inMonth(9),
+     location:'Mt. Makiling Forest Reserve', notes:'Released at the watershed edge at dawn. Flew off strongly.', recordedBy:'Dr. Elena Reyes'},
+    {id:generateId('rl'), animalId:'RR-0010', outcome:'Transferred', date:inMonth(20),
+     location:'Regional Raptor Care Facility, Manila', notes:'Transferred for specialist orthopedic surgery.', recordedBy:'Dr. Marco Santos'}
+  ];
+
+  saveAll(K.ANIMALS, animals);
+  saveAll(K.LOGS, logs);
+  saveAll(K.RELEASES, releases);
+}
+
+async function initData(){
+  if(!localStorage.getItem(K.USERS)){
+    const adminHash = await hashPassword('Admin123');
+    const vetHash = await hashPassword('Vet12345');
+    const volHash = await hashPassword('Vol12345');
+    saveAll(K.USERS, [
+      {id:'u_admin', name:'Dr. Elena Reyes', email:'admin@demo.com', phone:'+63 912 345 6789',
+       role:'Admin', pass:adminHash, status:'active', createdAt:new Date().toISOString()},
+      {id:'u_vet', name:'Dr. Marco Santos', email:'vet@demo.com', phone:'+63 917 222 3344',
+       role:'Vet', pass:vetHash, status:'active', createdAt:new Date().toISOString()},
+      {id:'u_vol', name:'Ana Cruz', email:'volunteer@demo.com', phone:'+63 918 999 1122',
+       role:'Volunteer', pass:volHash, status:'active', createdAt:new Date().toISOString()}
+    ]);
+  }
+  if(!localStorage.getItem(K.COMPANY)){
+    write(K.COMPANY, Object.assign({}, DEFAULT_COMPANY));
+  } else {
+    // Brand migration: make sure a logo is always present
+    const existing = read(K.COMPANY, {});
+    const merged = Object.assign({}, DEFAULT_COMPANY, existing);
+    if(!merged.logo) merged.logo = LOGO_DATA;
+    write(K.COMPANY, merged);
+  }
+  if(!localStorage.getItem(K.PREFS)) write(K.PREFS, Object.assign({}, DEFAULT_PREFS));
+  if(!localStorage.getItem(K.ANIMALS)) seedSampleData();
+  if(!localStorage.getItem(K.LOGS)) saveAll(K.LOGS, []);
+  if(!localStorage.getItem(K.RELEASES)) saveAll(K.RELEASES, []);
+}
+
+/* =========================================================
+   9. ROUTER & SHELL
+   ========================================================= */
+function render(){
+  const root = document.getElementById('app');
+  const user = currentUser();
+
+  if(!user){
+    root.innerHTML = authHTML();
+    bindAuth();
+    return;
+  }
+
+  const route = location.hash || '#/dashboard';
+  state.route = route;
+
+  let page = '';
+  let title = 'Dashboard';
+
+  if(route.indexOf('#/animal/') === 0){
+    const id = decodeURIComponent(route.split('/')[2] || '');
+    page = renderAnimalProfile(id);
+    title = 'Animal Profile';
+  } else if(route === '#/intake'){
+    page = renderIntake(); title = 'Add Animal (Intake)';
+  } else if(route === '#/animals'){
+    page = renderAnimals(); title = 'Animal List';
+  } else if(route === '#/carelog'){
+    page = renderCareLog(); title = 'Care Log';
+  } else if(route === '#/releases'){
+    page = renderReleases(); title = 'Releases';
+  } else if(route === '#/settings'){
+    if(user.role === 'Volunteer'){ page = noAccessHTML('Settings'); title = 'Settings'; }
+    else { page = renderSettings(); title = 'Settings'; }
+  } else {
+    page = renderDashboard(); title = 'Dashboard';
+  }
+
+  root.innerHTML = shellHTML(user, route, title, page);
+  afterRender();
+  applyTheme();
+}
+
+function shellHTML(user, route, title, page){
+  const c = company();
+  const p = prefs();
+
+  const navItems = NAV.filter(function(n){
+    return !n.roles || n.roles.indexOf(user.role) !== -1;
+  }).map(function(n){
+    const active = route === n.hash ||
+      (n.hash === '#/animals' && route.indexOf('#/animal/') === 0);
+    return '<a href="' + n.hash + '" class="' + (active ? 'active' : '') + '">' +
+             icon(n.icon, 17) + '<span>' + esc(n.label) + '</span></a>';
+  }).join('');
+
+  const logoHTML = c.logo
+    ? '<img class="brand-logo" src="' + esc(c.logo) + '" alt="' + esc(c.name) + ' logo">'
+    : '<div class="brand-logo brand-fallback">' + icon('paw', 18) + '</div>';
+
+  const themeIcon = p.theme === 'dark' ? 'sun' : 'moon';
+
+  return '' +
+  '<div class="shell">' +
+    '<aside class="sidebar" id="sidebar">' +
+      '<div class="brand">' + logoHTML +
+        '<div class="brand-txt"><strong>' + esc(c.name) + '</strong><small>RehabRangers</small></div>' +
+      '</div>' +
+      '<nav class="nav" aria-label="Main navigation">' + navItems + '</nav>' +
+      '<div class="sidebar-foot">' +
+        'Signed in as <strong>' + esc(user.name) + '</strong><br>' + esc(user.role) +
+      '</div>' +
+    '</aside>' +
+    '<div class="main">' +
+      '<header class="topbar no-print">' +
+        '<button class="icon-btn menu-btn" data-action="toggle-sidebar" aria-label="Toggle menu">' + icon('menu', 18) + '</button>' +
+        '<h1>' + esc(title) + '</h1>' +
+        '<div class="topbar-right">' +
+          '<button class="icon-btn" data-action="toggle-theme" aria-label="Toggle theme" title="Toggle light / dark">' +
+            icon(themeIcon, 16) + '</button>' +
+          '<div class="user-menu">' +
+            '<button class="user-chip" data-action="toggle-user-menu" aria-haspopup="true">' +
+              '<span class="avatar">' + esc(initials(user.name)) + '</span>' +
+              '<span class="user-meta"><strong>' + esc(user.name) + '</strong><small>' + esc(user.role) + '</small></span>' +
+              icon('chevronDown', 13) +
+            '</button>' +
+            '<div class="dropdown" id="user-dropdown" hidden>' +
+              '<a href="#/settings" data-action="go-account">' + icon('user', 15) + ' My Profile</a>' +
+              '<a href="#/settings">' + icon('gear', 15) + ' Settings</a>' +
+              '<button data-action="signout">' + icon('logout', 15) + ' Sign Out</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</header>' +
+      '<main class="content" id="content">' + page + '</main>' +
+    '</div>' +
+  '</div>';
+}
+
+function afterRender(){
+  applyTheme();
+  const route = state.route;
+  if(route.indexOf('#/animal/') === 0) bindProfile();
+  else if(route === '#/intake') bindIntake();
+  else if(route === '#/animals') bindAnimals();
+  else if(route === '#/carelog') bindCareLog();
+  else if(route === '#/releases') bindReleases();
+  else if(route === '#/settings') bindSettings();
+}
+
+function noAccessHTML(what){
+  return '<div class="card"><div class="empty">' +
+    '<div class="em-ic">' + icon('lock', 24) + '</div>' +
+    '<h3>Access restricted</h3>' +
+    '<p>Your role (' + esc((currentUser() || {}).role || '') + ') does not have permission to open ' + esc(what) + '.</p>' +
+    '<a class="btn btn-primary" href="#/dashboard">Back to Dashboard</a>' +
+  '</div></div>';
+}
+
+/* =========================================================
+   10. PAGE — DASHBOARD
+   ========================================================= */
+function renderDashboard(){
+  const user = currentUser();
+  const animals = getAll(K.ANIMALS);
+  const releases = getAll(K.RELEASES);
+  const logs = getAll(K.LOGS);
+  const p = prefs();
+  const now = new Date();
+
+  const inCare = animals.filter(function(a){ return CLOSED.indexOf(a.status) === -1; });
+  const ready = animals.filter(function(a){ return a.status === 'Ready for Release'; });
+  const releasedThisMonth = releases.filter(function(r){
+    return r.outcome === 'Released' && isSameMonth(r.date, now);
+  }).length;
+  const releasedTotal = releases.filter(function(r){ return r.outcome === 'Released'; }).length;
+  const closedTotal = releases.length;
+  const successRate = closedTotal ? Math.round(releasedTotal / closedTotal * 100) : 0;
+
+  const counts = {};
+  STATUSES.forEach(function(s){ counts[s] = 0; });
+  animals.forEach(function(a){ counts[a.status] = (counts[a.status] || 0) + 1; });
+  const maxCount = Math.max(1, Math.max.apply(null, Object.keys(counts).map(function(k){ return counts[k]; })));
+
+  const chart = STATUSES.map(function(s){
+    const h = Math.round(counts[s] / maxCount * 100);
+    return '<div class="bar-col">' +
+      '<div class="bar-track"><div class="bar-fill" style="height:' + h + '%"></div></div>' +
+      '<div class="bar-count">' + counts[s] + '</div>' +
+      '<div class="bar-label">' + esc(s) + '</div>' +
+    '</div>';
+  }).join('');
+
+  const recent = animals.slice().sort(function(a,b){
+    return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+  }).slice(0, 5);
+
+  const recentHTML = recent.length ? recent.map(function(a){
+    return '<a class="list-item" href="#/animal/' + encodeURIComponent(a.id) + '">' +
+      (a.photo
+        ? '<img class="thumb" src="' + esc(a.photo) + '" alt="">'
+        : '<div class="thumb">' + icon('paw', 15) + '</div>') +
+      '<div class="grow"><strong>' + esc(a.commonName) + '</strong>' +
+        '<small>' + esc(a.id) + ' · ' + esc(a.species) + ' · ' + esc(formatDate(a.dateFound)) + '</small></div>' +
+      '<span class="badge" data-status="' + esc(a.status) + '">' + esc(a.status) + '</span>' +
+    '</a>';
+  }).join('') :
+  '<div class="empty"><div class="em-ic">' + icon('paw', 22) + '</div>' +
+    '<h3>No animals yet</h3><p>Register your first rescue to get started.</p>' +
+    '<a class="btn btn-primary" href="#/intake">Add Animal</a></div>';
+
+  const today = todayISO();
+  const reminders = logs.filter(function(l){ return l.nextDue && !l.done; })
+    .sort(function(a,b){ return String(a.nextDue).localeCompare(String(b.nextDue)); })
+    .slice(0, 6);
+
+  const remHTML = !p.dailyReminders
+    ? '<div class="alert info">' + icon('bell', 15) + '<span>Daily reminders are off. Enable them in Settings &rsaquo; Preferences.</span></div>'
+    : (reminders.length ? '<div class="list">' + reminders.map(function(l){
+        const a = animals.find(function(x){ return x.id === l.animalId; });
+        const overdue = l.nextDue < today;
+        return '<div class="list-item">' +
+          '<label class="check" style="gap:8px">' +
+            '<input type="checkbox" data-action="toggle-reminder" data-id="' + esc(l.id) + '" aria-label="Mark reminder done">' +
+            '<span class="grow"><strong style="display:block;font-size:.82rem">' + esc(l.type) + ' — ' + esc(a ? a.commonName : l.animalId) + '</strong>' +
+            '<small style="color:var(--muted);font-size:.71rem">' + esc(a ? a.id : '') + ' · ' +
+              esc(l.nextDue === today ? 'Due today' : (overdue ? 'Overdue ' + formatDate(l.nextDue) : 'Due ' + formatDate(l.nextDue))) +
+            '</small></span>' +
+          '</label>' +
+          (overdue ? '<span class="pill danger">Overdue</span>' : '<span class="pill">Due</span>') +
+        '</div>';
+      }).join('') + '</div>'
+      : '<div class="empty" style="padding:22px 8px"><div class="em-ic">' + icon('bell', 20) + '</div>' +
+        '<h3>Nothing scheduled</h3><p>Add a "next due" date to a care entry to create a reminder.</p></div>');
+
+  return '' +
+  '<div class="grid-stats" style="margin-bottom:12px">' +
+    statCard('Animals In Care', inCare.length, 'Currently in rehabilitation', 'paw', '') +
+    statCard('Ready for Release', ready.length, 'Cleared for release', 'plane', 'earth') +
+    statCard('Released This Month', releasedThisMonth, formatDate(todayISO()), 'check', 'info') +
+    statCard('Success Rate', successRate + '%', releasedTotal + ' of ' + closedTotal + ' closed', 'heart', 'warn') +
+  '</div>' +
+
+  '<div class="two-col">' +
+    '<div class="card">' +
+      '<div class="card-head"><h2>' + icon('grid', 16) + ' Animals by Status</h2>' +
+        '<span class="pill">' + animals.length + ' total</span></div>' +
+      '<div class="bar-chart">' + chart + '</div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<div class="card-head"><h2>' + icon('bell', 16) + " Today's Reminders</h2>" +
+        '<a class="btn btn-sm btn-ghost" href="#/carelog">Care Log</a></div>' +
+      remHTML +
+    '</div>' +
+  '</div>' +
+
+  '<div class="two-col" style="margin-top:12px">' +
+    '<div class="card">' +
+      '<div class="card-head"><h2>' + icon('paw', 16) + ' Recent Admissions</h2>' +
+        '<a class="btn btn-sm btn-ghost" href="#/animals">View all</a></div>' +
+      '<div class="list">' + recentHTML + '</div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<div class="card-head"><h2>' + icon('user', 16) + ' Quick Actions</h2></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<a class="btn btn-primary btn-sm" href="#/intake">' + icon('plus', 14) + ' New Intake</a>' +
+        '<a class="btn btn-sm" href="#/animals">' + icon('paw', 14) + ' Animal List</a>' +
+        '<a class="btn btn-sm" href="#/releases">' + icon('plane', 14) + ' Record Release</a>' +
+      '</div>' +
+      '<p class="muted" style="margin-top:10px;font-size:.79rem">Hello ' + esc(user.name) + ' — signed in as <strong>' + esc(user.role) + '</strong>.</p>' +
+    '</div>' +
+  '</div>';
+}
+
+function statCard(label, value, hint, ic, cls){
+  return '<div class="stat ' + (cls || '') + '">' +
+    '<span class="lbl">' + icon(ic, 13) + esc(label) + '</span>' +
+    '<span class="val">' + esc(value) + '</span>' +
+    '<span class="hint">' + esc(hint) + '</span>' +
+  '</div>';
+}
+
+/* =========================================================
+   11. PAGE — ADD ANIMAL (INTAKE)
+   ========================================================= */
+function nextCaseId(){
+  const c = company();
+  const prefix = String(c.prefix || 'RR').toUpperCase();
+  const nums = getAll(K.ANIMALS).map(function(a){
+    const m = String(a.id).match(/(\d+)\s*$/);
+    return m ? parseInt(m[1], 10) : 0;
+  });
+  const next = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
+  return prefix + '-' + String(next).padStart(4, '0');
+}
+
+function renderIntake(){
+  const user = currentUser();
+  const c = company();
+  const animals = getAll(K.ANIMALS);
+  const inCare = animals.filter(function(a){ return CLOSED.indexOf(a.status) === -1; }).length;
+  const capacity = Number(c.capacity) || 0;
+  const atCapacity = capacity > 0 && inCare >= capacity;
+  const caseId = nextCaseId();
+  const speciesOptions = SPECIES.map(function(s){ return '<option value="' + esc(s) + '">' + esc(s) + '</option>'; }).join('');
+
+  const capAlert = atCapacity
+    ? '<div class="alert warn">' + icon('bell', 15) +
+      '<span>This center has reached its capacity (' + inCare + ' / ' + capacity + ' animals in care). You can still register a new intake, but please confirm you have space.</span></div>'
+    : '<div class="alert ok">' + icon('check', 15) +
+      '<span>' + inCare + ' of ' + capacity + ' capacity used. ' + Math.max(0, capacity - inCare) + ' space(s) remaining.</span></div>';
+
+  return '' +
+  '<form id="intake-form" novalidate>' +
+    '<div class="card">' +
+      '<div class="card-head"><h2>' + icon('plus', 16) + ' New Animal Intake</h2>' +
+        '<span class="pill">Case ID <strong class="mono" style="margin-left:5px">' + esc(caseId) + '</strong></span></div>' +
+      capAlert +
+      '<div class="photo-drop" style="margin-bottom:12px">' +
+        '<div class="preview" id="photo-preview">' + icon('image', 22) + '</div>' +
+        '<div>' +
+          '<label class="lbl" for="intake-photo">Photo (resized to 400px)</label>' +
+          '<input id="intake-photo" name="photo" type="file" accept="image/*" style="margin-top:5px;max-width:260px">' +
+          '<p class="muted" style="margin-top:4px;font-size:.76rem">JPG or PNG. Stored locally in your browser.</p>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="row">' +
+        '<div class="field"><label for="intake-species">Species *</label>' +
+          '<select id="intake-species" name="species" required>' + speciesOptions + '<option value="Other">Other</option></select>' +
+        '</div>' +
+        '<div class="field"><label for="intake-common">Common name *</label>' +
+          '<input id="intake-common" name="commonName" type="text" placeholder="e.g. Philippine Scops Owl" required>' +
+        '</div>' +
+      '</div>' +
+      '<div class="field hidden" id="custom-species-wrap">' +
+        '<label for="intake-species-custom">Custom species</label>' +
+        '<input id="intake-species-custom" name="speciesCustom" type="text" placeholder="Enter species">' +
+      '</div>' +
+
+      '<div class="row-3">' +
+        '<div class="field"><label for="intake-age">Age class</label>' +
+          '<select id="intake-age" name="ageClass"><option>Juvenile</option><option selected>Adult</option><option>Unknown</option></select>' +
+        '</div>' +
+        '<div class="field"><label for="intake-sex">Sex</label>' +
+          '<select id="intake-sex" name="sex"><option>Unknown</option><option>Female</option><option>Male</option></select>' +
+        '</div>' +
+        '<div class="field"><label for="intake-weight">Weight (g)</label>' +
+          '<input id="intake-weight" name="weight" type="number" min="0" step="1" placeholder="e.g. 120">' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="row-3">' +
+        '<div class="field"><label for="intake-date">Date found *</label>' +
+          '<input id="intake-date" name="dateFound" type="date" max="' + todayISO() + '" value="' + todayISO() + '" required>' +
+        '</div>' +
+        '<div class="field"><label for="intake-location">Location found *</label>' +
+          '<input id="intake-location" name="locationFound" type="text" placeholder="Barangay, City" required>' +
+        '</div>' +
+        '<div class="field"><label for="intake-reason">Reason for admission *</label>' +
+          '<select id="intake-reason" name="reason" required>' +
+            '<option value="Injury">Injury</option><option value="Orphaned">Orphaned</option>' +
+            '<option value="Illness">Illness</option><option value="Other">Other</option>' +
+          '</select>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="row">' +
+        '<div class="field"><label for="intake-foundby">Found by</label>' +
+          '<input id="intake-foundby" name="foundBy" type="text" placeholder="Name of rescuer">' +
+        '</div>' +
+        '<div class="field"><label for="intake-contact">Contact number</label>' +
+          '<input id="intake-contact" name="contact" type="tel" placeholder="+63 9XX XXX XXXX">' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="field"><label for="intake-notes">Condition notes</label>' +
+        '<textarea id="intake-notes" name="conditionNotes" placeholder="Describe injuries, behaviour and initial treatment…"></textarea>' +
+      '</div>' +
+
+      '<div class="form-actions">' +
+        '<button class="btn btn-primary" type="submit">' + icon('check', 15) + ' Save Intake</button>' +
+        '<button class="btn btn-ghost" type="reset" id="intake-clear">Clear</button>' +
+        '<span class="muted" style="align-self:center;font-size:.79rem">Registered by ' + esc(user.name) + '</span>' +
+      '</div>' +
+    '</div>' +
+  '</form>';
+}
+
+function bindIntake(){
+  const form = document.getElementById('intake-form');
+  if(!form) return;
+  state.pendingPhoto = null;
+
+  const speciesSel = document.getElementById('intake-species');
+  speciesSel.addEventListener('change', function(){
+    document.getElementById('custom-species-wrap').classList.toggle('hidden', speciesSel.value !== 'Other');
+  });
+
+  const file = document.getElementById('intake-photo');
+  file.addEventListener('change', async function(){
+    const f = file.files && file.files[0];
+    if(!f) return;
+    try{
+      const data = await resizeImage(f, 400);
+      state.pendingPhoto = data;
+      document.getElementById('photo-preview').innerHTML = '<img src="' + esc(data) + '" alt="Preview">';
+    }catch(err){
+      showToast('Could not read that image.', 'error');
+    }
+  });
+
+  form.addEventListener('reset', function(){
+    state.pendingPhoto = null;
+    document.getElementById('photo-preview').innerHTML = icon('image', 22);
+    document.getElementById('custom-species-wrap').classList.add('hidden');
+  });
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const speciesVal = speciesSel.value === 'Other'
+      ? String(form.speciesCustom.value || '').trim()
+      : speciesSel.value;
+    const commonName = String(form.commonName.value || '').trim();
+    const dateFound = form.dateFound.value;
+    const locationFound = String(form.locationFound.value || '').trim();
+
+    let bad = false;
+    [['intake-species', speciesVal], ['intake-common', commonName],
+     ['intake-date', dateFound], ['intake-location', locationFound]].forEach(function(pair){
+      const el = document.getElementById(pair[0]);
+      const ok = !!pair[1];
+      el.classList.toggle('invalid', !ok);
+      if(!ok) bad = true;
+    });
+
+    if(bad){ showToast('Please fill in all required fields.', 'error'); return; }
+    if(dateFound > todayISO()){
+      document.getElementById('intake-date').classList.add('invalid');
+      showToast('The date found cannot be in the future.', 'error');
+      return;
+    }
+
+    const c = company();
+    const animals = getAll(K.ANIMALS);
+    const inCare = animals.filter(function(a){ return CLOSED.indexOf(a.status) === -1; }).length;
+    const capacity = Number(c.capacity) || 0;
+    if(capacity > 0 && inCare >= capacity){
+      confirmModal('Center at capacity',
+        'You have ' + inCare + ' animals in care and a capacity of ' + capacity + '. Save this intake anyway?',
+        function(){ saveIntake(); }, false);
+      return;
+    }
+    saveIntake();
+
+    function saveIntake(){
+      const id = nextCaseId();
+      const animal = {
+        id: id,
+        species: speciesVal,
+        commonName: commonName,
+        ageClass: form.ageClass.value,
+        sex: form.sex.value,
+        weight: Number(form.weight.value) || 0,
+        dateFound: dateFound,
+        locationFound: locationFound,
+        foundBy: String(form.foundBy.value || '').trim(),
+        contact: String(form.contact.value || '').trim(),
+        reason: form.reason.value,
+        conditionNotes: String(form.conditionNotes.value || '').trim(),
+        status: 'Admitted',
+        photo: state.pendingPhoto || '',
+        createdAt: new Date().toISOString(),
+        createdBy: currentUser().name
+      };
+      const list = getAll(K.ANIMALS);
+      list.push(animal);
+      saveAll(K.ANIMALS, list);
+
+      const logs = getAll(K.LOGS);
+      logs.push({
+        id: generateId('cl'),
+        animalId: id,
+        date: todayISO(),
+        type: 'Checkup',
+        weight: 0,
+        notes: 'Initial intake assessment.',
+        staff: currentUser().name,
+        nextDue: dayOffset(2),
+        done: false
+      });
+      saveAll(K.LOGS, logs);
+
+      showToast('Animal ' + id + ' saved successfully.');
+      state.pendingPhoto = null;
+      render();
+    }
+  });
+}
+
+/* =========================================================
+   12. PAGE — ANIMAL LIST
+   ========================================================= */
+function filteredAnimals(){
+  const all = getAll(K.ANIMALS);
+  const q = state.list.q.trim().toLowerCase();
+  let list = all.filter(function(a){
+    if(state.list.status !== 'all' && a.status !== state.list.status) return false;
+    if(state.list.species !== 'all' && a.species !== state.list.species) return false;
+    if(q){
+      const hay = (a.id + ' ' + a.commonName + ' ' + a.species + ' ' + a.locationFound + ' ' + a.foundBy).toLowerCase();
+      if(hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+  if(state.list.sort === 'newest') list.sort(function(a,b){ return String(b.dateFound).localeCompare(String(a.dateFound)); });
+  else if(state.list.sort === 'oldest') list.sort(function(a,b){ return String(a.dateFound).localeCompare(String(b.dateFound)); });
+  else if(state.list.sort === 'species') list.sort(function(a,b){ return String(a.species).localeCompare(String(b.species)) || String(a.commonName).localeCompare(String(b.commonName)); });
+  return list;
+}
+
+function renderAnimals(){
+  const user = currentUser();
+  const list = filteredAnimals();
+  const perPage = 10;
+  const totalPages = Math.max(1, Math.ceil(list.length / perPage));
+  if(state.list.page > totalPages) state.list.page = totalPages;
+  const page = state.list.page;
+  const slice = list.slice((page-1)*perPage, page*perPage);
+
+  const statusOpts = ['all'].concat(STATUSES).map(function(s){
+    return '<option value="' + esc(s) + '"' + (state.list.status === s ? ' selected' : '') + '>' +
+      (s === 'all' ? 'All statuses' : esc(s)) + '</option>';
+  }).join('');
+
+  const speciesOpts = ['all'].concat(SPECIES).map(function(s){
+    return '<option value="' + esc(s) + '"' + (state.list.species === s ? ' selected' : '') + '>' +
+      (s === 'all' ? 'All species' : esc(s)) + '</option>';
+  }).join('');
+
+  const rows = slice.length ? slice.map(function(a){
+    const canDelete = user.role !== 'Volunteer';
+    return '<tr>' +
+      '<td class="mono">' + esc(a.id) + '</td>' +
+      '<td><strong>' + esc(a.commonName) + '</strong><br><span class="muted">' + esc(a.species) + '</span></td>' +
+      '<td>' + esc(a.ageClass) + '</td>' +
+      '<td class="nowrap">' + esc(formatDate(a.dateFound)) + '</td>' +
+      '<td><span class="badge" data-status="' + esc(a.status) + '">' + esc(a.status) + '</span></td>' +
+      '<td><div class="td-actions">' +
+        '<a class="icon-btn" href="#/animal/' + encodeURIComponent(a.id) + '" title="View" aria-label="View ' + esc(a.id) + '">' + icon('eye', 14) + '</a>' +
+        '<button class="icon-btn" data-action="edit-animal" data-id="' + esc(a.id) + '" title="Edit" aria-label="Edit ' + esc(a.id) + '">' + icon('pen', 14) + '</button>' +
+        (canDelete
+          ? '<button class="icon-btn danger" data-action="delete-animal" data-id="' + esc(a.id) + '" title="Delete" aria-label="Delete ' + esc(a.id) + '">' + icon('trash', 14) + '</button>'
+          : '') +
+      '</div></td>' +
+    '</tr>';
+  }).join('') :
+  '<tr><td colspan="6"><div class="empty"><div class="em-ic">' + icon('paw', 22) + '</div>' +
+    '<h3>No animals found</h3><p>Try changing the search or filters, or register a new intake.</p>' +
+    '<a class="btn btn-primary" href="#/intake">Add Animal</a></div></td></tr>';
+
+  let pagerBtns = '';
+  for(let i = 1; i <= totalPages; i++){
+    if(totalPages > 7 && i !== 1 && i !== totalPages && Math.abs(i - page) > 1) {
+      if(i === 2 || i === totalPages - 1) pagerBtns += '<span class="page-btn" style="border:none;background:none">…</span>';
+      continue;
+    }
+    pagerBtns += '<button class="page-btn ' + (i === page ? 'active' : '') + '" data-action="goto-page" data-page="' + i + '">' + i + '</button>';
+  }
+
+  return '' +
+  '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('paw', 16) + ' Animals</h2>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+        '<button class="btn btn-sm" data-action="export-animals">' + icon('download', 13) + ' Export CSV</button>' +
+        '<button class="btn btn-sm" data-action="print-animals">' + icon('printer', 13) + ' Print</button>' +
+        '<a class="btn btn-sm btn-primary" href="#/intake">' + icon('plus', 13) + ' New Intake</a>' +
+      '</div>' +
+    '</div>' +
+    '<div class="toolbar no-print">' +
+      '<div class="search-wrap">' + icon('search', 15) +
+        '<input id="list-search" type="search" placeholder="Search ID, name, species, location…" value="' + esc(state.list.q) + '" aria-label="Search animals">' +
+      '</div>' +
+      '<select id="list-status" aria-label="Filter by status">' + statusOpts + '</select>' +
+      '<select id="list-species" aria-label="Filter by species">' + speciesOpts + '</select>' +
+      '<select id="list-sort" aria-label="Sort">' +
+        '<option value="newest"' + (state.list.sort === 'newest' ? ' selected' : '') + '>Newest first</option>' +
+        '<option value="oldest"' + (state.list.sort === 'oldest' ? ' selected' : '') + '>Oldest first</option>' +
+        '<option value="species"' + (state.list.sort === 'species' ? ' selected' : '') + '>Species A–Z</option>' +
+      '</select>' +
+    '</div>' +
+    '<div class="table-wrap"><table>' +
+      '<thead><tr><th>Case ID</th><th>Species</th><th>Age</th><th>Admitted</th><th>Status</th><th>Actions</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>' +
+    '<div class="pager no-print">' +
+      '<span class="muted" style="font-size:.77rem">Showing ' + (list.length ? ((page-1)*perPage + 1) : 0) + '–' +
+        Math.min(page*perPage, list.length) + ' of ' + list.length + '</span>' +
+      '<div class="pages">' +
+        '<button class="page-btn" data-action="goto-page" data-page="' + Math.max(1, page-1) + '" ' + (page === 1 ? 'disabled' : '') + '>‹</button>' +
+        pagerBtns +
+        '<button class="page-btn" data-action="goto-page" data-page="' + Math.min(totalPages, page+1) + '" ' + (page === totalPages ? 'disabled' : '') + '>›</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function bindAnimals(){
+  const search = document.getElementById('list-search');
+  if(search){
+    search.addEventListener('input', debounce(function(e){
+      state.list.q = e.target.value;
+      state.list.page = 1;
+      render();
+      const el = document.getElementById('list-search');
+      if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    }, 260));
+  }
+  const st = document.getElementById('list-status');
+  if(st) st.addEventListener('change', function(){ state.list.status = st.value; state.list.page = 1; render(); });
+  const sp = document.getElementById('list-species');
+  if(sp) sp.addEventListener('change', function(){ state.list.species = sp.value; state.list.page = 1; render(); });
+  const so = document.getElementById('list-sort');
+  if(so) so.addEventListener('change', function(){ state.list.sort = so.value; render(); });
+}
+
+function exportAnimalsCSV(){
+  const list = filteredAnimals();
+  const headers = ['Case ID','Common Name','Species','Age Class','Sex','Weight (g)','Date Found','Location Found','Found By','Contact','Reason','Status','Condition Notes'];
+  const rows = list.map(function(a){
+    return [a.id, a.commonName, a.species, a.ageClass, a.sex, a.weight, a.dateFound,
+      a.locationFound, a.foundBy, a.contact, a.reason, a.status, a.conditionNotes];
+  });
+  downloadFile('animals-' + todayISO() + '.csv', toCSV(headers, rows), 'text/csv;charset=utf-8');
+  showToast('CSV exported (' + list.length + ' records).');
+}
+
+function printAnimals(){
+  const list = filteredAnimals();
+  const rows = list.map(function(a){
+    return '<tr><td>' + esc(a.id) + '</td><td>' + esc(a.commonName) + '</td><td>' + esc(a.species) + '</td>' +
+      '<td>' + esc(a.ageClass) + '</td><td>' + esc(formatDate(a.dateFound)) + '</td><td>' + esc(a.status) + '</td></tr>';
+  }).join('');
+  printHTML('Animal Register (' + list.length + ' records)',
+    '<table><thead><tr><th>Case ID</th><th>Common Name</th><th>Species</th><th>Age</th><th>Admitted</th><th>Status</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>');
+}
+
+function editAnimalModal(id){
+  const animal = getAll(K.ANIMALS).find(function(a){ return a.id === id; });
+  if(!animal) return;
+  const statusOpts = STATUSES.map(function(s){
+    return '<option value="' + esc(s) + '"' + (animal.status === s ? ' selected' : '') + '>' + esc(s) + '</option>';
+  }).join('');
+
+  openModal('Edit ' + animal.id,
+    '<div class="field"><label for="ed-common">Common name</label>' +
+      '<input id="ed-common" type="text" value="' + esc(animal.commonName) + '"></div>' +
+    '<div class="row">' +
+      '<div class="field"><label for="ed-species">Species</label><input id="ed-species" type="text" value="' + esc(animal.species) + '"></div>' +
+      '<div class="field"><label for="ed-age">Age class</label>' +
+        '<select id="ed-age">' + ['Juvenile','Adult','Unknown'].map(function(x){
+          return '<option' + (animal.ageClass === x ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></div>' +
+    '</div>' +
+    '<div class="row">' +
+      '<div class="field"><label for="ed-sex">Sex</label>' +
+        '<select id="ed-sex">' + ['Unknown','Female','Male'].map(function(x){
+          return '<option' + (animal.sex === x ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></div>' +
+      '<div class="field"><label for="ed-weight">Weight (g)</label>' +
+        '<input id="ed-weight" type="number" min="0" step="1" value="' + esc(animal.weight) + '"></div>' +
+    '</div>' +
+    '<div class="field"><label for="ed-status">Status</label><select id="ed-status">' + statusOpts + '</select></div>' +
+    '<div class="field"><label for="ed-notes">Condition notes</label>' +
+      '<textarea id="ed-notes">' + esc(animal.conditionNotes) + '</textarea></div>',
+    [
+      {label:'Cancel', cls:'btn-ghost', onClick: closeModal},
+      {label:'Save Changes', cls:'btn-primary', onClick: function(){
+        const list = getAll(K.ANIMALS);
+        const idx = list.findIndex(function(a){ return a.id === id; });
+        if(idx === -1) return;
+        list[idx].commonName = document.getElementById('ed-common').value.trim() || list[idx].commonName;
+        list[idx].species = document.getElementById('ed-species').value.trim() || list[idx].species;
+        list[idx].ageClass = document.getElementById('ed-age').value;
+        list[idx].sex = document.getElementById('ed-sex').value;
+        list[idx].weight = Number(document.getElementById('ed-weight').value) || 0;
+        list[idx].status = document.getElementById('ed-status').value;
+        list[idx].conditionNotes = document.getElementById('ed-notes').value;
+        saveAll(K.ANIMALS, list);
+        closeModal();
+        render();
+        showToast('Animal updated.');
+      }}
+    ]);
+}
+
+function deleteAnimal(id){
+  confirmModal('Delete animal', 'Delete case ' + id + ' and all of its care logs? This cannot be undone.', function(){
+    saveAll(K.ANIMALS, getAll(K.ANIMALS).filter(function(a){ return a.id !== id; }));
+    saveAll(K.LOGS, getAll(K.LOGS).filter(function(l){ return l.animalId !== id; }));
+    saveAll(K.RELEASES, getAll(K.RELEASES).filter(function(r){ return r.animalId !== id; }));
+    render();
+    showToast('Animal ' + id + ' deleted.');
+  });
+}
+
+/* =========================================================
+   13. PAGE — ANIMAL PROFILE & CARE LOG
+   ========================================================= */
+function renderAnimalProfile(id){
+  const user = currentUser();
+  const animal = getAll(K.ANIMALS).find(function(a){ return a.id === id; });
+  if(!animal){
+    return '<div class="card"><div class="empty"><div class="em-ic">' + icon('paw', 22) + '</div>' +
+      '<h3>Animal not found</h3><p>This record may have been deleted.</p>' +
+      '<a class="btn btn-primary" href="#/animals">Back to Animal List</a></div></div>';
+  }
+
+  const logs = getAll(K.LOGS).filter(function(l){ return l.animalId === id; })
+    .sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
+  const releases = getAll(K.RELEASES).filter(function(r){ return r.animalId === id; });
+
+  const stepIndex = PROGRESS.indexOf(animal.status);
+  const stepsHTML = PROGRESS.map(function(s, i){
+    let cls = '';
+    if(stepIndex > -1){
+      if(i < stepIndex) cls = 'done';
+      else if(i === stepIndex) cls = 'current';
+    } else if(CLOSED.indexOf(animal.status) !== -1){
+      cls = 'done';
+    }
+    return '<div class="step ' + cls + '"><div class="bar"></div>' + esc(s) + '</div>';
+  }).join('');
+
+  const statusOpts = STATUSES.map(function(s){
+    return '<option value="' + esc(s) + '"' + (animal.status === s ? ' selected' : '') + '>' + esc(s) + '</option>';
+  }).join('');
+
+  const logRows = logs.length ? logs.map(function(l){
+    return '<tr>' +
+      '<td class="nowrap">' + esc(formatDate(l.date)) + '</td>' +
+      '<td><span class="pill">' + esc(l.type) + '</span></td>' +
+      '<td>' + (Number(l.weight) > 0 ? esc(fmtWeight(l.weight)) : '—') + '</td>' +
+      '<td>' + esc(l.notes || '—') +
+        (l.nextDue ? '<br><small class="muted">Next due: ' + esc(formatDate(l.nextDue)) + '</small>' : '') + '</td>' +
+      '<td class="nowrap">' + esc(l.staff || '—') + '</td>' +
+      '<td><div class="td-actions">' +
+        '<button class="icon-btn" data-action="edit-log" data-id="' + esc(l.id) + '" title="Edit entry">' + icon('pen', 13) + '</button>' +
+        '<button class="icon-btn danger" data-action="delete-log" data-id="' + esc(l.id) + '" title="Delete entry">' + icon('trash', 13) + '</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('') :
+  '<tr><td colspan="6"><div class="empty" style="padding:22px 8px"><div class="em-ic">' + icon('clipboard', 20) + '</div>' +
+    '<h3>No care entries yet</h3><p>Log the first treatment, feeding or checkup using the form above.</p></div></td></tr>';
+
+  const releaseInfo = releases.length ? '<div class="alert ok" style="margin-top:12px">' + icon('plane', 15) +
+    '<span>Outcome recorded: <strong>' + esc(releases[0].outcome) + '</strong> on ' + esc(formatDate(releases[0].date)) +
+    (releases[0].location ? ' at ' + esc(releases[0].location) : '') + '.</span></div>' : '';
+
+  return '' +
+  '<div class="card">' +
+    '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+      '<a class="btn btn-sm btn-ghost" href="#/animals">' + icon('arrowLeft', 13) + ' Back to list</a>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+        '<button class="btn btn-sm" data-action="edit-animal" data-id="' + esc(animal.id) + '">' + icon('pen', 13) + ' Edit details</button>' +
+        (user.role !== 'Volunteer'
+          ? '<button class="btn btn-sm btn-danger" data-action="delete-animal" data-id="' + esc(animal.id) + '">' + icon('trash', 13) + ' Delete</button>'
+          : '') +
+      '</div>' +
+    '</div>' +
+    '<div class="profile-head">' +
+      '<div class="profile-photo">' + (animal.photo
+        ? '<img src="' + esc(animal.photo) + '" alt="' + esc(animal.commonName) + '">'
+        : icon('paw', 34)) + '</div>' +
+      '<div class="profile-meta">' +
+        '<div class="profile-title">' +
+          '<h2>' + esc(animal.commonName) + '</h2>' +
+          '<span class="badge" data-status="' + esc(animal.status) + '">' + esc(animal.status) + '</span>' +
+          '<span class="pill mono">' + esc(animal.id) + '</span>' +
+        '</div>' +
+        '<div class="kv">' +
+          '<div><span>Species</span><strong>' + esc(animal.species) + '</strong></div>' +
+          '<div><span>Age</span><strong>' + esc(animal.ageClass) + '</strong></div>' +
+          '<div><span>Sex</span><strong>' + esc(animal.sex) + '</strong></div>' +
+          '<div><span>Weight</span><strong>' + esc(fmtWeight(animal.weight)) + '</strong></div>' +
+          '<div><span>Date found</span><strong>' + esc(formatDate(animal.dateFound)) + '</strong></div>' +
+          '<div><span>Found at</span><strong>' + esc(animal.locationFound || '—') + '</strong></div>' +
+          '<div><span>Reason</span><strong>' + esc(animal.reason) + '</strong></div>' +
+          '<div><span>Found by</span><strong>' + esc(animal.foundBy || '—') + (animal.contact ? ' · ' + esc(animal.contact) : '') + '</strong></div>' +
+        '</div>' +
+        (animal.conditionNotes ? '<p class="muted" style="font-size:.79rem">' + esc(animal.conditionNotes) + '</p>' : '') +
+        '<div class="field" style="max-width:240px;margin:0">' +
+          '<label for="profile-status">Change status</label>' +
+          '<select id="profile-status" data-animal="' + esc(animal.id) + '">' + statusOpts + '</select>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="margin-top:12px">' +
+      '<div class="steps">' + stepsHTML + '</div>' +
+    '</div>' +
+    releaseInfo +
+  '</div>' +
+
+  '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('scale', 16) + ' Weight History</h2></div>' +
+    '<canvas id="weight-chart" data-animal="' + esc(animal.id) + '" style="width:100%;height:150px"></canvas>' +
+  '</div>' +
+
+  '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('clipboard', 16) + ' Add Care Entry</h2></div>' +
+    '<form id="care-form" novalidate>' +
+      '<div class="row-3">' +
+        '<div class="field"><label for="care-date">Date *</label>' +
+          '<input id="care-date" name="date" type="date" min="' + esc(animal.dateFound) + '" max="' + todayISO() + '" value="' + todayISO() + '" required></div>' +
+        '<div class="field"><label for="care-type">Type *</label>' +
+          '<select id="care-type" name="type">' + CARE_TYPES.map(function(t){
+            return '<option>' + t + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field"><label for="care-weight">Weight (g)</label>' +
+          '<input id="care-weight" name="weight" type="number" min="0" step="1" placeholder="optional"></div>' +
+      '</div>' +
+      '<div class="field"><label for="care-notes">Notes *</label>' +
+        '<textarea id="care-notes" name="notes" placeholder="What was done during this entry?"></textarea></div>' +
+      '<div class="row">' +
+        '<div class="field"><label for="care-next">Next due (creates a reminder)</label>' +
+          '<input id="care-next" name="nextDue" type="date" min="' + todayISO() + '"></div>' +
+        '<div class="field"><label for="care-staff">Staff</label>' +
+          '<input id="care-staff" name="staff" type="text" value="' + esc(user.name) + '" readonly></div>' +
+      '</div>' +
+      '<div class="form-actions">' +
+        '<button class="btn btn-primary" type="submit">' + icon('check', 15) + ' Save Care Entry</button>' +
+      '</div>' +
+    '</form>' +
+  '</div>' +
+
+  '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('clipboard', 16) + ' Care History</h2>' +
+      '<span class="pill">' + logs.length + ' entries</span></div>' +
+    '<div class="table-wrap"><table>' +
+      '<thead><tr><th>Date</th><th>Type</th><th>Weight</th><th>Notes</th><th>Staff</th><th>Actions</th></tr></thead>' +
+      '<tbody>' + logRows + '</tbody>' +
+    '</table></div>' +
+  '</div>';
+}
+
+function bindProfile(){
+  const statusSel = document.getElementById('profile-status');
+  if(statusSel){
+    statusSel.addEventListener('change', function(){
+      const list = getAll(K.ANIMALS);
+      const idx = list.findIndex(function(a){ return a.id === statusSel.dataset.animal; });
+      if(idx === -1) return;
+      list[idx].status = statusSel.value;
+      saveAll(K.ANIMALS, list);
+      render();
+      showToast('Status updated to "' + statusSel.value + '".');
+    });
+  }
+
+  const form = document.getElementById('care-form');
+  if(form){
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      const animalId = document.getElementById('profile-status').dataset.animal;
+      const animal = getAll(K.ANIMALS).find(function(a){ return a.id === animalId; });
+      if(!animal) return;
+
+      const date = form.date.value;
+      const type = form.type.value;
+      const weight = Number(form.weight.value) || 0;
+      const notes = String(form.notes.value || '').trim();
+      const nextDue = form.nextDue.value || '';
+      const dateEl = document.getElementById('care-date');
+      const notesEl = document.getElementById('care-notes');
+      const weightEl = document.getElementById('care-weight');
+      const nextDueEl = document.getElementById('care-next');
+      dateEl.classList.remove('invalid');
+      notesEl.classList.remove('invalid');
+      weightEl.classList.remove('invalid');
+      nextDueEl.classList.remove('invalid');
+
+      if(!date){
+        dateEl.classList.add('invalid');
+        showToast('Please choose a date.', 'error');
+        return;
+      }
+      if(date > todayISO()){
+        dateEl.classList.add('invalid');
+        showToast('Care entries cannot be dated in the future.', 'error');
+        return;
+      }
+      if(animal.dateFound && date < animal.dateFound){
+        dateEl.classList.add('invalid');
+        showToast('Date cannot be before the animal was admitted (' + formatDate(animal.dateFound) + ').', 'error');
+        return;
+      }
+      if(!notes){
+        notesEl.classList.add('invalid');
+        showToast('Please add notes describing the care given.', 'error');
+        return;
+      }
+      if(type === 'Weight' && weight <= 0){
+        weightEl.classList.add('invalid');
+        showToast('Please enter a weight for a Weight entry.', 'error');
+        return;
+      }
+      if(nextDue && nextDue < todayISO()){
+        nextDueEl.classList.add('invalid');
+        showToast('Next due date cannot be in the past.', 'error');
+        return;
+      }
+
+      const entry = {
+        id: generateId('cl'),
+        animalId: animalId,
+        date: date,
+        type: type,
+        weight: weight,
+        notes: notes,
+        staff: String(form.staff.value || currentUser().name).trim(),
+        nextDue: nextDue,
+        done: false
+      };
+      const logs = getAll(K.LOGS);
+      logs.push(entry);
+      saveAll(K.LOGS, logs);
+
+      if(entry.weight > 0){
+        const animals = getAll(K.ANIMALS);
+        const idx = animals.findIndex(function(a){ return a.id === animalId; });
+        if(idx > -1){ animals[idx].weight = entry.weight; saveAll(K.ANIMALS, animals); }
+      }
+      render();
+      showToast('Care entry saved.');
+    });
+  }
+
+  const canvas = document.getElementById('weight-chart');
+  if(canvas) drawWeightChart(canvas);
+}
+
+function editLogModal(logId){
+  const logs = getAll(K.LOGS);
+  const log = logs.find(function(l){ return l.id === logId; });
+  if(!log) return;
+  const logAnimal = getAll(K.ANIMALS).find(function(a){ return a.id === log.animalId; });
+  const minDate = logAnimal && logAnimal.dateFound ? logAnimal.dateFound : '';
+  const originalNext = log.nextDue || '';
+  const typeOpts = CARE_TYPES.map(function(t){
+    return '<option' + (log.type === t ? ' selected' : '') + '>' + t + '</option>';
+  }).join('');
+
+  openModal('Edit care entry',
+    '<div class="row">' +
+      '<div class="field"><label for="lg-date">Date</label><input id="lg-date" type="date" min="' + esc(minDate) + '" max="' + todayISO() + '" value="' + esc(log.date) + '"></div>' +
+      '<div class="field"><label for="lg-type">Type</label><select id="lg-type">' + typeOpts + '</select></div>' +
+    '</div>' +
+    '<div class="row">' +
+      '<div class="field"><label for="lg-weight">Weight (g)</label><input id="lg-weight" type="number" min="0" step="1" value="' + esc(log.weight || '') + '"></div>' +
+      '<div class="field"><label for="lg-next">Next due</label><input id="lg-next" type="date" min="' + todayISO() + '" value="' + esc(originalNext) + '"></div>' +
+    '</div>' +
+    '<div class="field"><label for="lg-notes">Notes</label><textarea id="lg-notes">' + esc(log.notes || '') + '</textarea></div>',
+    [
+      {label:'Cancel', cls:'btn-ghost', onClick: closeModal},
+      {label:'Save', cls:'btn-primary', onClick: function(){
+        const list = getAll(K.LOGS);
+        const i = list.findIndex(function(l){ return l.id === logId; });
+        if(i === -1) return;
+        const newDate = document.getElementById('lg-date').value;
+        const newType = document.getElementById('lg-type').value;
+        const newWeight = Number(document.getElementById('lg-weight').value) || 0;
+        const newNext = document.getElementById('lg-next').value || '';
+        if(!newDate){ showToast('Please choose a date.', 'error'); return; }
+        if(newDate > todayISO()){ showToast('Date cannot be in the future.', 'error'); return; }
+        if(minDate && newDate < minDate){ showToast('Date cannot be before the animal was admitted (' + formatDate(minDate) + ').', 'error'); return; }
+        if(newType === 'Weight' && newWeight <= 0){ showToast('Please enter a weight for a Weight entry.', 'error'); return; }
+        if(newNext && newNext < todayISO() && newNext !== originalNext){
+          showToast('Next due date cannot be in the past.', 'error');
+          return;
+        }
+        list[i].date = newDate;
+        list[i].type = newType;
+        list[i].weight = newWeight;
+        list[i].nextDue = newNext;
+        list[i].notes = document.getElementById('lg-notes').value;
+        saveAll(K.LOGS, list);
+        closeModal();
+        render();
+        showToast('Care entry updated.');
+      }}
+    ]);
+}
+
+function deleteLog(logId){
+  confirmModal('Delete care entry', 'This care entry will be permanently removed.', function(){
+    saveAll(K.LOGS, getAll(K.LOGS).filter(function(l){ return l.id !== logId; }));
+    render();
+    showToast('Care entry deleted.');
+  });
+}
+
+function drawWeightChart(canvas){
+  const animalId = canvas.dataset.animal;
+  const logs = getAll(K.LOGS).filter(function(l){
+    return l.animalId === animalId && Number(l.weight) > 0;
+  }).sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+
+  const cs = getComputedStyle(document.documentElement);
+  const brand = (cs.getPropertyValue('--brand') || '').trim() || '#2e8b57';
+  const lineCol = (cs.getPropertyValue('--line') || '').trim() || '#e2eae4';
+  const muted = (cs.getPropertyValue('--muted') || '').trim() || '#6b7f72';
+
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 520;
+  const H = 150;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.height = H + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  if(!logs.length){
+    ctx.fillStyle = muted;
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No weight entries recorded yet', W/2, H/2);
+    return;
+  }
+
+  const pad = {l:44, r:14, t:12, b:22};
+  const vals = logs.map(function(l){ return Number(l.weight); });
+  let min = Math.min.apply(null, vals);
+  let max = Math.max.apply(null, vals);
+  if(min === max){ min = Math.max(0, min - 10); max = max + 10; }
+  const iw = W - pad.l - pad.r;
+  const ih = H - pad.t - pad.b;
+
+  function px(i){ return logs.length === 1 ? pad.l + iw/2 : pad.l + (iw * i / (logs.length - 1)); }
+  function py(v){ return pad.t + ih - ((v - min) / (max - min)) * ih; }
+
+  ctx.strokeStyle = lineCol;
+  ctx.lineWidth = 1;
+  for(let g = 0; g <= 4; g++){
+    const yy = pad.t + ih * g / 4;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
+  }
+
+  ctx.fillStyle = muted;
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  for(let g = 0; g <= 4; g++){
+    const v = max - (max - min) * g / 4;
+    ctx.fillText(String(Math.round(v)), pad.l - 6, pad.t + ih * g / 4 + 3);
+  }
+
+  ctx.beginPath();
+  logs.forEach(function(l, i){
+    const x = px(i), y = py(Number(l.weight));
+    if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = brand;
+  ctx.lineWidth = 2.2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  logs.forEach(function(l, i){
+    ctx.beginPath();
+    ctx.arc(px(i), py(Number(l.weight)), 3.2, 0, Math.PI * 2);
+    ctx.fillStyle = brand;
+    ctx.fill();
+  });
+
+  ctx.fillStyle = muted;
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(formatDate(logs[0].date), pad.l, H - 6);
+  if(logs.length > 1){
+    ctx.textAlign = 'right';
+    ctx.fillText(formatDate(logs[logs.length - 1].date), W - pad.r, H - 6);
+  }
+}
+
+/* =========================================================
+   14. PAGE — CARE LOG (selector + recent entries)
+   ========================================================= */
+function renderCareLog(){
+  const animals = getAll(K.ANIMALS);
+  const logs = getAll(K.LOGS).slice().sort(function(a,b){
+    return String(b.date).localeCompare(String(a.date));
+  });
+
+  const options = animals.length
+    ? animals.map(function(a){
+        return '<option value="' + esc(a.id) + '">' + esc(a.id) + ' — ' + esc(a.commonName) + ' (' + esc(a.status) + ')</option>';
+      }).join('')
+    : '<option value="">No animals registered</option>';
+
+  const rows = logs.length ? logs.slice(0, 25).map(function(l){
+    const a = animals.find(function(x){ return x.id === l.animalId; });
+    return '<tr>' +
+      '<td class="mono">' + esc(l.animalId) + '</td>' +
+      '<td>' + esc(a ? a.commonName : '—') + '</td>' +
+      '<td class="nowrap">' + esc(formatDate(l.date)) + '</td>' +
+      '<td><span class="pill">' + esc(l.type) + '</span></td>' +
+      '<td>' + (Number(l.weight) > 0 ? esc(fmtWeight(l.weight)) : '—') + '</td>' +
+      '<td>' + esc(l.notes || '—') + '</td>' +
+      '<td class="nowrap">' + esc(l.staff || '—') + '</td>' +
+    '</tr>';
+  }).join('') :
+  '<tr><td colspan="7"><div class="empty" style="padding:22px 8px"><div class="em-ic">' + icon('clipboard', 20) + '</div>' +
+    '<h3>No care entries yet</h3><p>Open an animal profile to add the first care entry.</p></div></td></tr>';
+
+  return '' +
+  '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('clipboard', 16) + ' Care Log</h2></div>' +
+    '<div class="field" style="max-width:460px">' +
+      '<label for="care-animal-select">Select an animal</label>' +
+      '<select id="care-animal-select">' + options + '</select>' +
+    '</div>' +
+    '<button class="btn btn-primary" id="open-profile-btn" ' + (animals.length ? '' : 'disabled') + '>' +
+      icon('paw', 15) + ' Open Animal Profile</button>' +
+  '</div>' +
+  '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('clipboard', 16) + ' Recent Care Entries</h2>' +
+      '<span class="pill">' + logs.length + ' total</span></div>' +
+    '<div class="table-wrap"><table>' +
+      '<thead><tr><th>Case ID</th><th>Animal</th><th>Date</th><th>Type</th><th>Weight</th><th>Notes</th><th>Staff</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>' +
+  '</div>';
+}
+
+function bindCareLog(){
+  const sel = document.getElementById('care-animal-select');
+  const btn = document.getElementById('open-profile-btn');
+  if(!sel || !btn) return;
+  function open(){
+    if(sel.value) location.hash = '#/animal/' + encodeURIComponent(sel.value);
+  }
+  btn.addEventListener('click', open);
+  sel.addEventListener('change', open);
+}
+
+/* =========================================================
+   15. PAGE — RELEASES
+   ========================================================= */
+function renderReleases(){
+  const animals = getAll(K.ANIMALS);
+  const releases = getAll(K.RELEASES).slice().sort(function(a,b){
+    return String(b.date).localeCompare(String(a.date));
+  });
+  const openAnimals = animals.filter(function(a){ return CLOSED.indexOf(a.status) === -1; });
+  const year = new Date().getFullYear();
+  const yearReleases = releases.filter(function(r){
+    return String(r.date || '').slice(0,4) === String(year);
+  });
+
+  const counts = {Released:0, Transferred:0, Deceased:0};
+  yearReleases.forEach(function(r){ counts[r.outcome] = (counts[r.outcome] || 0) + 1; });
+  const totalOut = yearReleases.length || 1;
+
+  const bars = OUTCOMES.map(function(o){
+    const pct = Math.round((counts[o] || 0) / totalOut * 100);
+    const cls = o === 'Released' ? '' : (o === 'Transferred' ? 'earth' : 'danger');
+    return '<div class="hbar-row">' +
+      '<span>' + esc(o) + '</span>' +
+      '<div class="hbar-track"><div class="hbar-fill ' + cls + '" style="width:' + pct + '%"></div></div>' +
+      '<strong style="text-align:right">' + (counts[o] || 0) + '</strong>' +
+    '</div>';
+  }).join('');
+
+  const animalOpts = openAnimals.length
+    ? openAnimals.map(function(a){
+        return '<option value="' + esc(a.id) + '">' + esc(a.id) + ' — ' + esc(a.commonName) + '</option>';
+      }).join('')
+    : '<option value="">No open cases available</option>';
+
+  const rows = releases.length ? releases.map(function(r){
+    const a = animals.find(function(x){ return x.id === r.animalId; });
+    return '<tr>' +
+      '<td class="mono">' + esc(r.animalId) + '</td>' +
+      '<td>' + esc(a ? a.commonName : '—') + '</td>' +
+      '<td><span class="badge" data-status="' + esc(r.outcome) + '">' + esc(r.outcome) + '</span></td>' +
+      '<td class="nowrap">' + esc(formatDate(r.date)) + '</td>' +
+      '<td>' + esc(r.location || '—') + '</td>' +
+      '<td>' + esc(r.notes || '—') + '</td>' +
+      '<td class="nowrap">' + esc(r.recordedBy || '—') + '</td>' +
+    '</tr>';
+  }).join('') :
+  '<tr><td colspan="7"><div class="empty" style="padding:22px 8px"><div class="em-ic">' + icon('plane', 20) + '</div>' +
+    '<h3>No releases recorded</h3><p>Record an outcome using the form above.</p></div></td></tr>';
+
+  return '' +
+  '<div class="two-col">' +
+    '<div class="card">' +
+      '<div class="card-head"><h2>' + icon('plane', 16) + ' Record Outcome</h2></div>' +
+      '<form id="release-form" novalidate>' +
+        '<div class="field"><label for="rel-animal">Animal *</label>' +
+          '<select id="rel-animal" name="animalId" ' + (openAnimals.length ? '' : 'disabled') + '>' + animalOpts + '</select></div>' +
+        '<div class="row">' +
+          '<div class="field"><label for="rel-outcome">Outcome *</label>' +
+            '<select id="rel-outcome" name="outcome">' + OUTCOMES.map(function(o){
+              return '<option>' + o + '</option>'; }).join('') + '</select></div>' +
+          '<div class="field"><label for="rel-date">Date *</label>' +
+            '<input id="rel-date" name="date" type="date" max="' + todayISO() + '" value="' + todayISO() + '"></div>' +
+        '</div>' +
+        '<div class="field"><label for="rel-location">Location</label>' +
+          '<input id="rel-location" name="location" type="text" placeholder="Release site / receiving facility"></div>' +
+        '<div class="field"><label for="rel-notes">Notes</label>' +
+          '<textarea id="rel-notes" name="notes" placeholder="Condition at release, observations…"></textarea></div>' +
+        '<div class="form-actions">' +
+          '<button class="btn btn-primary" type="submit" ' + (openAnimals.length ? '' : 'disabled') + '>' +
+            icon('check', 15) + ' Save Outcome</button>' +
+        '</div>' +
+      '</form>' +
+    '</div>' +
+    '<div class="card">' +
+      '<div class="card-head"><h2>' + icon('heart', 16) + ' Outcomes in ' + year + '</h2></div>' +
+      '<div class="hbar">' + bars + '</div>' +
+      '<p class="muted" style="margin-top:12px;font-size:.78rem">' + yearReleases.length + ' outcome(s) recorded this year.</p>' +
+    '</div>' +
+  '</div>' +
+
+  '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('plane', 16) + ' Release History</h2>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+        '<button class="btn btn-sm" data-action="release-report">' + icon('printer', 13) + ' Generate Report</button>' +
+        '<button class="btn btn-sm" data-action="export-releases">' + icon('download', 13) + ' Export CSV</button>' +
+        '<button class="btn btn-sm" data-action="print-releases">' + icon('printer', 13) + ' Print</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="table-wrap"><table>' +
+      '<thead><tr><th>Case ID</th><th>Animal</th><th>Outcome</th><th>Date</th><th>Location</th><th>Notes</th><th>Recorded by</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>' +
+  '</div>';
+}
+
+function bindReleases(){
+  const form = document.getElementById('release-form');
+  if(!form) return;
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const animalId = form.animalId.value;
+    const outcome = form.outcome.value;
+    const date = form.date.value;
+    if(!animalId){ showToast('Please select an animal.', 'error'); return; }
+    if(!date){ showToast('Please choose a date.', 'error'); return; }
+    if(date > todayISO()){ showToast('The outcome date cannot be in the future.', 'error'); return; }
+
+    const releases = getAll(K.RELEASES);
+    releases.push({
+      id: generateId('rl'),
+      animalId: animalId,
+      outcome: outcome,
+      date: date,
+      location: String(form.location.value || '').trim(),
+      notes: String(form.notes.value || '').trim(),
+      recordedBy: currentUser().name
+    });
+    saveAll(K.RELEASES, releases);
+
+    const animals = getAll(K.ANIMALS);
+    const idx = animals.findIndex(function(a){ return a.id === animalId; });
+    if(idx > -1){
+      animals[idx].status = outcome === 'Released' ? 'Released'
+        : outcome === 'Transferred' ? 'Transferred' : 'Deceased';
+      saveAll(K.ANIMALS, animals);
+    }
+    render();
+    showToast('Outcome recorded for ' + animalId + '.');
+  });
+}
+
+function releaseReportHTML(){
+  const animals = getAll(K.ANIMALS);
+  const releases = getAll(K.RELEASES).slice().sort(function(a,b){
+    return String(a.date).localeCompare(String(b.date));
+  });
+  const year = new Date().getFullYear();
+  const counts = {Released:0, Transferred:0, Deceased:0};
+  releases.filter(function(r){ return String(r.date || '').slice(0,4) === String(year); })
+    .forEach(function(r){ counts[r.outcome] = (counts[r.outcome] || 0) + 1; });
+
+  const rows = releases.map(function(r){
+    const a = animals.find(function(x){ return x.id === r.animalId; });
+    return '<tr><td>' + esc(r.animalId) + '</td><td>' + esc(a ? a.commonName : '—') + '</td>' +
+      '<td>' + esc(r.outcome) + '</td><td>' + esc(formatDate(r.date)) + '</td>' +
+      '<td>' + esc(r.location || '—') + '</td><td>' + esc(r.notes || '—') + '</td></tr>';
+  }).join('');
+
+  return '<p><strong>Outcome summary for ' + year + ':</strong> Released ' + (counts.Released || 0) +
+    ' · Transferred ' + (counts.Transferred || 0) + ' · Deceased ' + (counts.Deceased || 0) + '</p>' +
+    '<table><thead><tr><th>Case ID</th><th>Animal</th><th>Outcome</th><th>Date</th><th>Location</th><th>Notes</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>';
+}
+
+function exportReleasesCSV(){
+  const animals = getAll(K.ANIMALS);
+  const releases = getAll(K.RELEASES);
+  const rows = releases.map(function(r){
+    const a = animals.find(function(x){ return x.id === r.animalId; });
+    return [r.animalId, a ? a.commonName : '', r.outcome, r.date, r.location, r.notes, r.recordedBy];
+  });
+  downloadFile('releases-' + todayISO() + '.csv',
+    toCSV(['Case ID','Animal','Outcome','Date','Location','Notes','Recorded By'], rows),
+    'text/csv;charset=utf-8');
+  showToast('Releases CSV exported.');
+}
+
+/* =========================================================
+   16. PAGE — SETTINGS
+   ========================================================= */
+function renderSettings(){
+  const user = currentUser();
+  const tabs = SETTINGS_TABS.filter(function(t){
+    return !t.roles || t.roles.indexOf(user.role) !== -1;
+  });
+  if(!tabs.some(function(t){ return t.id === state.settingsTab; })){
+    state.settingsTab = 'company';
+  }
+  const menu = tabs.map(function(t){
+    return '<button data-action="settings-tab" data-tab="' + t.id + '" class="' + (state.settingsTab === t.id ? 'active' : '') + '">' +
+      icon(t.icon, 15) + esc(t.label) + '</button>';
+  }).join('');
+
+  let panel = '';
+  switch(state.settingsTab){
+    case 'location': panel = settingsLocation(); break;
+    case 'contact': panel = settingsContact(); break;
+    case 'operations': panel = settingsOperations(); break;
+    case 'staff': panel = settingsStaff(); break;
+    case 'preferences': panel = settingsPreferences(); break;
+    case 'data': panel = settingsData(); break;
+    case 'account': panel = settingsAccount(); break;
+    default: panel = settingsCompany();
+  }
+
+  return '<div class="settings-grid">' +
+    '<div class="submenu no-print">' + menu + '</div>' +
+    '<div>' + panel + '</div>' +
+  '</div>';
+}
+
+function fieldHTML(label, name, value, type, extra){
+  return '<div class="field"><label for="f-' + name + '">' + esc(label) + '</label>' +
+    '<input id="f-' + name + '" name="' + name + '" type="' + (type || 'text') + '" value="' + esc(value == null ? '' : value) + '" ' + (extra || '') + '></div>';
+}
+function textareaHTML(label, name, value, rows){
+  return '<div class="field"><label for="f-' + name + '">' + esc(label) + '</label>' +
+    '<textarea id="f-' + name + '" name="' + name + '" rows="' + (rows || 3) + '">' + esc(value == null ? '' : value) + '</textarea></div>';
+}
+
+function settingsCompany(){
+  const c = company();
+  const logo = c.logo
+    ? '<div class="logo-preview"><img src="' + esc(c.logo) + '" alt="logo" style="width:100%;height:100%;object-fit:cover;border-radius:13px"></div>'
+    : '<div class="logo-preview">' + icon('image', 22) + '</div>';
+  return '<form id="settings-form" data-tab="company" class="card">' +
+    '<div class="card-head"><h2>' + icon('paw', 16) + ' Company Information</h2></div>' +
+    '<div class="photo-drop" style="margin-bottom:12px">' + logo +
+      '<div><label class="lbl" for="logo-file">Center logo</label>' +
+      '<input id="logo-file" type="file" accept="image/*" style="margin-top:5px;max-width:240px">' +
+      '<p class="muted" style="margin-top:4px;font-size:.76rem">Appears in the header and on printed reports.</p></div>' +
+    '</div>' +
+    fieldHTML('Center name', 'name', c.name) +
+    '<div class="row">' +
+      fieldHTML('Organization type', 'orgType', c.orgType) +
+      fieldHTML('Registration / permit no.', 'permit', c.permit) +
+    '</div>' +
+    fieldHTML('Date established', 'established', c.established, 'date') +
+    textareaHTML('About / mission', 'about', c.about, 3) +
+    '<div class="form-actions"><button class="btn btn-primary" type="submit">' + icon('check', 15) + ' Save Company</button></div>' +
+  '</form>';
+}
+
+function settingsLocation(){
+  const c = company();
+  return '<form id="settings-form" data-tab="location" class="card">' +
+    '<div class="card-head"><h2>' + icon('mapPin', 16) + ' Location</h2></div>' +
+    '<div class="row">' +
+      fieldHTML('Street', 'street', c.street) +
+      fieldHTML('Barangay', 'barangay', c.barangay) +
+    '</div>' +
+    '<div class="row-3">' +
+      fieldHTML('City / Municipality', 'city', c.city) +
+      fieldHTML('Province', 'province', c.province) +
+      fieldHTML('Postal code', 'postal', c.postal) +
+    '</div>' +
+    fieldHTML('Country', 'country', c.country) +
+    '<div class="row">' +
+      fieldHTML('GPS latitude', 'lat', c.lat, 'text', 'placeholder="14.1699"') +
+      fieldHTML('GPS longitude', 'lng', c.lng, 'text', 'placeholder="121.2440"') +
+    '</div>' +
+    '<button type="button" class="btn" id="geo-btn">' + icon('mapPin', 15) + ' Use My Current Location</button>' +
+    textareaHTML('Service area', 'serviceArea', c.serviceArea, 2) +
+    '<div class="form-actions"><button class="btn btn-primary" type="submit">' + icon('check', 15) + ' Save Location</button></div>' +
+  '</form>';
+}
+
+function settingsContact(){
+  const c = company();
+  return '<form id="settings-form" data-tab="contact" class="card">' +
+    '<div class="card-head"><h2>' + icon('phone', 16) + ' Contact Details</h2></div>' +
+    '<div class="row">' +
+      fieldHTML('Contact person', 'contactPerson', c.contactPerson) +
+      fieldHTML('Position', 'position', c.position) +
+    '</div>' +
+    '<div class="row">' +
+      fieldHTML('Phone', 'phone', c.phone) +
+      fieldHTML('Alternate phone', 'altPhone', c.altPhone) +
+    '</div>' +
+    '<div class="row">' +
+      fieldHTML('Emergency hotline', 'hotline', c.hotline) +
+      fieldHTML('Email', 'email', c.email, 'email') +
+    '</div>' +
+    '<div class="row">' +
+      fieldHTML('Website', 'website', c.website) +
+      fieldHTML('Facebook', 'facebook', c.facebook) +
+    '</div>' +
+    fieldHTML('Instagram', 'instagram', c.instagram) +
+    '<label class="check" style="margin-top:4px">' +
+      '<input type="checkbox" name="showContact" ' + (c.showContact !== false ? 'checked' : '') + '> Show contact on printed reports</label>' +
+    '<div class="form-actions"><button class="btn btn-primary" type="submit">' + icon('check', 15) + ' Save Contact</button></div>' +
+  '</form>';
+}
+
+function settingsOperations(){
+  const c = company();
+  const accepted = Array.isArray(c.speciesAccepted) ? c.speciesAccepted : [];
+  const speciesBoxes = SPECIES.map(function(s){
+    return '<label class="check" style="margin-right:14px"><input type="checkbox" name="speciesAccepted" value="' + esc(s) + '" ' +
+      (accepted.indexOf(s) !== -1 ? 'checked' : '') + '> ' + esc(s) + '</label>';
+  }).join('');
+  return '<form id="settings-form" data-tab="operations" class="card">' +
+    '<div class="card-head"><h2>' + icon('gear', 16) + ' Operations</h2></div>' +
+    fieldHTML('Operating hours', 'hours', c.hours) +
+    '<label class="check" style="margin:4px 0 12px">' +
+      '<input type="checkbox" name="emergency24" ' + (c.emergency24 ? 'checked' : '') + '> 24/7 emergency intake</label>' +
+    '<div class="row">' +
+      fieldHTML('Capacity (animals in care)', 'capacity', c.capacity, 'number', 'min="1"') +
+      fieldHTML('Case ID prefix', 'prefix', c.prefix, 'text', 'maxlength="6"') +
+    '</div>' +
+    '<div class="field"><span class="lbl">Species accepted</span>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">' + speciesBoxes + '</div></div>' +
+    fieldHTML('Veterinarian on call', 'vetOnCall', c.vetOnCall) +
+    '<div class="form-actions"><button class="btn btn-primary" type="submit">' + icon('check', 15) + ' Save Operations</button></div>' +
+  '</form>';
+}
+
+function settingsStaff(){
+  const c = company();
+  const list = users();
+  const rows = list.map(function(u){
+    return '<tr>' +
+      '<td><strong>' + esc(u.name) + '</strong><br><span class="muted">' + esc(u.email) + '</span></td>' +
+      '<td>' + esc(u.role) + '</td>' +
+      '<td><span class="pill ' + (u.status === 'active' ? 'ok' : 'danger') + '">' + esc(u.status || 'active') + '</span></td>' +
+      '<td class="nowrap">' + esc(formatDate(String(u.createdAt || '').slice(0,10))) + '</td>' +
+      '<td><div class="td-actions">' +
+        '<button class="icon-btn" data-action="edit-user" data-id="' + esc(u.id) + '" title="Edit user">' + icon('pen', 13) + '</button>' +
+        '<button class="icon-btn danger" data-action="delete-user" data-id="' + esc(u.id) + '" title="Remove user">' + icon('trash', 13) + '</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
+
+  return '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('user', 16) + ' Staff & Users</h2>' +
+      '<span class="pill">' + list.length + ' users</span></div>' +
+    '<div class="table-wrap"><table>' +
+      '<thead><tr><th>User</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>' +
+    '<div class="form-actions">' +
+      '<div style="flex:1;min-width:200px">' +
+        '<span class="lbl">Invite code</span>' +
+        '<div style="display:flex;gap:6px;margin-top:5px">' +
+          '<input id="invite-code" type="text" readonly value="' + esc(c.inviteCode || '') + '">' +
+          '<button class="btn" type="button" data-action="gen-invite">Generate</button>' +
+          '<button class="btn" type="button" data-action="copy-invite">' + icon('download', 13) + ' Copy</button>' +
+        '</div>' +
+        '<p class="muted" style="margin-top:5px;font-size:.76rem">New staff can join this center using this code at sign-up.</p>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function settingsPreferences(){
+  const p = prefs();
+  return '<form id="settings-form" data-tab="preferences" class="card">' +
+    '<div class="card-head"><h2>' + icon('sun', 16) + ' Preferences</h2></div>' +
+    '<div class="row">' +
+      '<div class="field"><label for="f-theme">Theme</label>' +
+        '<select id="f-theme" name="theme">' +
+          '<option value="light"' + (p.theme !== 'dark' ? ' selected' : '') + '>Light</option>' +
+          '<option value="dark"' + (p.theme === 'dark' ? ' selected' : '') + '>Dark</option>' +
+        '</select></div>' +
+      '<div class="field"><label for="f-dateFormat">Date format</label>' +
+        '<select id="f-dateFormat" name="dateFormat">' +
+          ['MMM D, YYYY','DD/MM/YYYY','MM/DD/YYYY','YYYY-MM-DD'].map(function(f){
+            return '<option' + (p.dateFormat === f ? ' selected' : '') + '>' + f + '</option>';
+          }).join('') +
+        '</select></div>' +
+    '</div>' +
+    '<div class="row">' +
+      '<div class="field"><label for="f-weightUnit">Weight unit</label>' +
+        '<select id="f-weightUnit" name="weightUnit">' +
+          '<option value="g"' + (p.weightUnit === 'g' ? ' selected' : '') + '>Grams (g)</option>' +
+          '<option value="kg"' + (p.weightUnit === 'kg' ? ' selected' : '') + '>Kilograms (kg)</option>' +
+          '<option value="lb"' + (p.weightUnit === 'lb' ? ' selected' : '') + '>Pounds (lb)</option>' +
+        '</select></div>' +
+      '<div class="field"><label for="f-language">Language</label>' +
+        '<select id="f-language" name="language"><option value="en">English</option></select></div>' +
+    '</div>' +
+    '<label class="check" style="margin-top:4px">' +
+      '<input type="checkbox" name="dailyReminders" ' + (p.dailyReminders ? 'checked' : '') + '> Show daily reminders on the dashboard</label>' +
+    '<div class="form-actions"><button class="btn btn-primary" type="submit">' + icon('check', 15) + ' Save Preferences</button></div>' +
+  '</form>';
+}
+
+function settingsData(){
+  const p = prefs();
+  const isAdmin = currentUser().role === 'Admin';
+  return '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('download', 16) + ' Data & Backup</h2></div>' +
+    '<p class="muted" style="font-size:.79rem">Last backup: <strong>' + (p.lastBackup ? esc(formatDate(String(p.lastBackup).slice(0,10))) : 'never') + '</strong></p>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">' +
+      '<button class="btn btn-primary" data-action="export-json">' + icon('download', 15) + ' Export All Data (JSON)</button>' +
+      '<button class="btn" data-action="import-json">' + icon('upload', 15) + ' Import Backup</button>' +
+      '<input type="file" id="import-file" accept="application/json,.json" class="hidden">' +
+    '</div>' +
+    '<div class="alert info" style="margin-top:14px">' + icon('bell', 15) +
+      '<span>Exporting saves a full JSON snapshot of users, company, animals, care logs, releases and preferences.</span></div>' +
+    (isAdmin
+      ? '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">' +
+          '<h3 style="margin-bottom:6px">Danger zone</h3>' +
+          '<p class="muted" style="margin-bottom:10px;font-size:.79rem">Clearing all data removes every record from this browser. This cannot be undone.</p>' +
+          '<button class="btn btn-danger" data-action="clear-all">' + icon('trash', 15) + ' Clear All Data</button>' +
+        '</div>'
+      : '') +
+  '</div>';
+}
+
+function settingsAccount(){
+  const u = currentUser();
+  return '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('user', 16) + ' My Account</h2>' +
+      '<span class="pill">' + esc(u.role) + '</span></div>' +
+    '<form id="account-form" novalidate>' +
+      '<div class="row">' +
+        fieldHTML('Full name', 'name', u.name) +
+        fieldHTML('Phone', 'phone', u.phone) +
+      '</div>' +
+      fieldHTML('Email', 'email', u.email, 'email') +
+      '<div class="form-actions"><button class="btn btn-primary" type="submit">' + icon('check', 15) + ' Save Profile</button></div>' +
+    '</form>' +
+  '</div>' +
+  '<div class="card">' +
+    '<div class="card-head"><h2>' + icon('lock', 16) + ' Change Password</h2></div>' +
+    '<form id="password-form" novalidate>' +
+      fieldHTML('Current password', 'current', '', 'password') +
+      '<div class="row">' +
+        fieldHTML('New password', 'newpass', '', 'password') +
+        fieldHTML('Confirm new password', 'newpass2', '', 'password') +
+      '</div>' +
+      '<p class="muted" style="font-size:.76rem">Minimum 8 characters, 1 uppercase letter and 1 number.</p>' +
+      '<div class="form-actions"><button class="btn btn-primary" type="submit">' + icon('lock', 15) + ' Update Password</button></div>' +
+    '</form>' +
+  '</div>';
+}
+
+function bindSettings(){
+  const user = currentUser();
+
+  const form = document.getElementById('settings-form');
+  if(form){
+    form.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const tab = form.dataset.tab;
+      const values = formValues(form);
+
+      if(tab === 'company'){
+        saveCompany({
+          name: String(values.name || '').trim() || 'RehabRangers Wildlife Center',
+          orgType: values.orgType,
+          permit: values.permit,
+          established: values.established,
+          about: values.about
+        });
+        showToast('Company information saved.');
+      } else if(tab === 'location'){
+        saveCompany({
+          street: values.street, barangay: values.barangay, city: values.city,
+          province: values.province, postal: values.postal, country: values.country,
+          lat: values.lat, lng: values.lng, serviceArea: values.serviceArea
+        });
+        showToast('Location saved.');
+      } else if(tab === 'contact'){
+        saveCompany({
+          contactPerson: values.contactPerson, position: values.position,
+          phone: values.phone, altPhone: values.altPhone, hotline: values.hotline,
+          email: values.email, website: values.website, facebook: values.facebook,
+          instagram: values.instagram, showContact: !!values.showContact
+        });
+        showToast('Contact details saved.');
+      } else if(tab === 'operations'){
+        saveCompany({
+          hours: values.hours,
+          emergency24: !!values.emergency24,
+          capacity: Number(values.capacity) || 0,
+          prefix: String(values.prefix || 'RR').toUpperCase().replace(/[^A-Z0-9]/g, '') || 'RR',
+          speciesAccepted: Array.isArray(values.speciesAccepted) ? values.speciesAccepted : [],
+          vetOnCall: values.vetOnCall
+        });
+        showToast('Operations saved.');
+      } else if(tab === 'preferences'){
+        const p = savePrefs({
+          theme: values.theme === 'dark' ? 'dark' : 'light',
+          dateFormat: values.dateFormat,
+          weightUnit: values.weightUnit,
+          language: values.language || 'en',
+          dailyReminders: !!values.dailyReminders
+        });
+        applyTheme();
+        render();
+        showToast('Preferences saved (' + p.theme + ' mode).');
+        return;
+      }
+      render();
+    });
+  }
+
+  const logoInput = document.getElementById('logo-file');
+  if(logoInput){
+    logoInput.addEventListener('change', async function(){
+      const f = logoInput.files && logoInput.files[0];
+      if(!f) return;
+      try{
+        const data = await resizeImage(f, 240);
+        saveCompany({logo:data});
+        render();
+        showToast('Logo updated.');
+      }catch(err){ showToast('Could not read that image.', 'error'); }
+    });
+  }
+
+  const geoBtn = document.getElementById('geo-btn');
+  if(geoBtn){
+    geoBtn.addEventListener('click', function(){
+      if(!navigator.geolocation){ showToast('Geolocation is not supported by this browser.', 'error'); return; }
+      geoBtn.textContent = 'Locating…';
+      navigator.geolocation.getCurrentPosition(function(pos){
+        const lat = document.getElementById('f-lat');
+        const lng = document.getElementById('f-lng');
+        if(lat) lat.value = pos.coords.latitude.toFixed(6);
+        if(lng) lng.value = pos.coords.longitude.toFixed(6);
+        geoBtn.innerHTML = icon('mapPin', 15) + ' Use My Current Location';
+        showToast('Location captured — remember to save.');
+      }, function(){
+        geoBtn.innerHTML = icon('mapPin', 15) + ' Use My Current Location';
+        showToast('Could not get your location. Please enter it manually.', 'error');
+      }, {timeout:10000});
+    });
+  }
+
+  const accForm = document.getElementById('account-form');
+  if(accForm){
+    accForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      const name = String(accForm.name.value || '').trim();
+      const email = String(accForm.email.value || '').trim().toLowerCase();
+      const phone = String(accForm.phone.value || '').trim();
+      if(!name || !email){ showToast('Name and email are required.', 'error'); return; }
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showToast('Please enter a valid email.', 'error'); return; }
+      const list = users();
+      if(list.some(function(u){ return u.id !== user.id && String(u.email).toLowerCase() === email; })){
+        showToast('That email is already used by another account.', 'error'); return;
+      }
+      const idx = list.findIndex(function(u){ return u.id === user.id; });
+      list[idx].name = name;
+      list[idx].email = email;
+      list[idx].phone = phone;
+      saveAll(K.USERS, list);
+      render();
+      showToast('Profile updated.');
+    });
+  }
+
+  const pwForm = document.getElementById('password-form');
+  if(pwForm){
+    pwForm.addEventListener('submit', async function(e){
+      e.preventDefault();
+      const cur = String(pwForm.current.value || '');
+      const np = String(pwForm.newpass.value || '');
+      const np2 = String(pwForm.newpass2.value || '');
+      const hash = await hashPassword(cur);
+      if(hash !== user.pass){ showToast('Current password is incorrect.', 'error'); return; }
+      const issues = passwordIssues(np);
+      if(issues.length){ showToast('New password needs ' + issues.join(', ') + '.', 'error'); return; }
+      if(np !== np2){ showToast('New passwords do not match.', 'error'); return; }
+      const list = users();
+      const idx = list.findIndex(function(u){ return u.id === user.id; });
+      list[idx].pass = await hashPassword(np);
+      saveAll(K.USERS, list);
+      pwForm.reset();
+      showToast('Password updated successfully.');
+    });
+  }
+
+  const importFile = document.getElementById('import-file');
+  if(importFile){
+    importFile.addEventListener('change', function(){
+      const f = importFile.files && importFile.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = function(){
+        try{
+          const data = JSON.parse(String(reader.result));
+          applyImport(data);
+        }catch(err){ showToast('Invalid backup file.', 'error'); }
+      };
+      reader.onerror = function(){ showToast('Could not read the file.', 'error'); };
+      reader.readAsText(f);
+    });
+  }
+}
+
+function formValues(form){
+  const out = {};
+  Array.from(form.elements).forEach(function(el){
+    if(!el.name) return;
+    if(el.type === 'checkbox'){
+      const same = form.querySelectorAll('[name="' + el.name + '"]');
+      if(same.length > 1){
+        out[el.name] = out[el.name] || [];
+        if(el.checked) out[el.name].push(el.value);
+      } else {
+        out[el.name] = el.checked;
+      }
+    } else if(el.type === 'radio'){
+      if(el.checked) out[el.name] = el.value;
+    } else if(el.tagName === 'SELECT' && el.multiple){
+      out[el.name] = Array.from(el.selectedOptions).map(function(o){ return o.value; });
+    } else {
+      out[el.name] = el.value;
+    }
+  });
+  return out;
+}
+
+function editUserModal(id){
+  const list = users();
+  const u = list.find(function(x){ return x.id === id; });
+  if(!u) return;
+  openModal('Edit user — ' + u.name,
+    '<div class="field"><label for="eu-name">Full name</label><input id="eu-name" type="text" value="' + esc(u.name) + '"></div>' +
+    '<div class="field"><label for="eu-email">Email</label><input id="eu-email" type="email" value="' + esc(u.email) + '"></div>' +
+    '<div class="field"><label for="eu-phone">Phone</label><input id="eu-phone" type="text" value="' + esc(u.phone || '') + '"></div>' +
+    '<div class="row">' +
+      '<div class="field"><label for="eu-role">Role</label><select id="eu-role">' +
+        ROLES.map(function(r){ return '<option' + (u.role === r ? ' selected' : '') + '>' + r + '</option>'; }).join('') +
+      '</select></div>' +
+      '<div class="field"><label for="eu-status">Status</label><select id="eu-status">' +
+        ['active','inactive'].map(function(s){ return '<option' + ((u.status || 'active') === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+      '</select></div>' +
+    '</div>',
+    [
+      {label:'Cancel', cls:'btn-ghost', onClick: closeModal},
+      {label:'Save', cls:'btn-primary', onClick: function(){
+        const arr = users();
+        const i = arr.findIndex(function(x){ return x.id === id; });
+        if(i === -1) return;
+        arr[i].name = document.getElementById('eu-name').value.trim() || arr[i].name;
+        arr[i].email = document.getElementById('eu-email').value.trim().toLowerCase() || arr[i].email;
+        arr[i].phone = document.getElementById('eu-phone').value.trim();
+        arr[i].role = document.getElementById('eu-role').value;
+        arr[i].status = document.getElementById('eu-status').value;
+        saveAll(K.USERS, arr);
+        closeModal();
+        render();
+        showToast('User updated.');
+      }}
+    ]);
+}
+
+function deleteUser(id){
+  const me = currentUser();
+  if(me.id === id){ showToast('You cannot remove your own account.', 'error'); return; }
+  const u = users().find(function(x){ return x.id === id; });
+  if(!u) return;
+  confirmModal('Remove user', 'Remove ' + u.name + ' (' + u.email + ') from this center?', function(){
+    saveAll(K.USERS, users().filter(function(x){ return x.id !== id; }));
+    render();
+    showToast('User removed.');
+  });
+}
+
+function exportAllJSON(){
+  const payload = {
+    app:'RehabRangers',
+    exportedAt: new Date().toISOString(),
+    users: getAll(K.USERS),
+    company: company(),
+    animals: getAll(K.ANIMALS),
+    careLogs: getAll(K.LOGS),
+    releases: getAll(K.RELEASES),
+    preferences: prefs()
+  };
+  downloadFile('rehabrangers-backup-' + todayISO() + '.json', JSON.stringify(payload, null, 2), 'application/json');
+  savePrefs({lastBackup: new Date().toISOString()});
+  render();
+  showToast('Backup exported.');
+}
+
+function applyImport(data){
+  if(!data || typeof data !== 'object'){ showToast('Invalid backup file.', 'error'); return; }
+  confirmModal('Import backup',
+    'This will replace all current data with the contents of the backup file. Continue?',
+    function(){
+      if(Array.isArray(data.users)) saveAll(K.USERS, data.users);
+      if(data.company && typeof data.company === 'object') write(K.COMPANY, data.company);
+      if(Array.isArray(data.animals)) saveAll(K.ANIMALS, data.animals);
+      if(Array.isArray(data.careLogs)) saveAll(K.LOGS, data.careLogs);
+      if(Array.isArray(data.releases)) saveAll(K.RELEASES, data.releases);
+      if(data.preferences && typeof data.preferences === 'object') write(K.PREFS, data.preferences);
+      applyTheme();
+      render();
+      showToast('Backup imported successfully.');
+    }, false);
+}
+
+function clearAllData(){
+  confirmModal('Clear all data',
+    'This permanently deletes all animals, care logs, releases, users and settings from this browser. Are you absolutely sure?',
+    function(){
+      Object.keys(K).forEach(function(k){ localStorage.removeItem(K[k]); });
+      localStorage.removeItem('rr_last_email');
+      location.hash = '';
+      state.authMode = 'signin';
+      initData().then(function(){ render(); showToast('All data cleared and demo data restored.'); });
+    });
+}
+
+/* =========================================================
+   17. GLOBAL EVENT HANDLERS
+   ========================================================= */
+document.addEventListener('click', function(e){
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action;
+  const id = el.dataset.id;
+
+  switch(action){
+    case 'close-modal':
+      closeModal();
+      break;
+    case 'signout':
+      signOut();
+      break;
+    case 'toggle-theme': {
+      const p = prefs();
+      savePrefs({theme: p.theme === 'dark' ? 'light' : 'dark'});
+      applyTheme();
+      render();
+      break;
+    }
+    case 'toggle-sidebar': {
+      const sb = document.getElementById('sidebar');
+      if(sb) sb.classList.toggle('open');
+      break;
+    }
+    case 'toggle-user-menu': {
+      const dd = document.getElementById('user-dropdown');
+      if(dd) dd.hidden = !dd.hidden;
+      break;
+    }
+    case 'go-account':
+      state.settingsTab = 'account';
+      break;
+    case 'toggle-reminder': {
+      const logs = getAll(K.LOGS);
+      const i = logs.findIndex(function(l){ return l.id === id; });
+      if(i > -1){
+        logs[i].done = true;
+        saveAll(K.LOGS, logs);
+        render();
+        showToast('Reminder marked as done.');
+      }
+      break;
+    }
+    case 'goto-page':
+      state.list.page = Number(el.dataset.page) || 1;
+      render();
+      break;
+    case 'edit-animal':
+      editAnimalModal(id);
+      break;
+    case 'delete-animal':
+      deleteAnimal(id);
+      break;
+    case 'edit-log':
+      editLogModal(id);
+      break;
+    case 'delete-log':
+      deleteLog(id);
+      break;
+    case 'export-animals':
+      exportAnimalsCSV();
+      break;
+    case 'print-animals':
+      printAnimals();
+      break;
+    case 'release-report':
+      printHTML('Release & Outcome Report', releaseReportHTML());
+      break;
+    case 'export-releases':
+      exportReleasesCSV();
+      break;
+    case 'print-releases': {
+      const animals = getAll(K.ANIMALS);
+      const rows = getAll(K.RELEASES).map(function(r){
+        const a = animals.find(function(x){ return x.id === r.animalId; });
+        return '<tr><td>' + esc(r.animalId) + '</td><td>' + esc(a ? a.commonName : '—') + '</td>' +
+          '<td>' + esc(r.outcome) + '</td><td>' + esc(formatDate(r.date)) + '</td>' +
+          '<td>' + esc(r.location || '—') + '</td></tr>';
+      }).join('');
+      printHTML('Release History',
+        '<table><thead><tr><th>Case ID</th><th>Animal</th><th>Outcome</th><th>Date</th><th>Location</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table>');
+      break;
+    }
+    case 'settings-tab':
+      state.settingsTab = el.dataset.tab;
+      render();
+      break;
+    case 'edit-user':
+      editUserModal(id);
+      break;
+    case 'delete-user':
+      deleteUser(id);
+      break;
+    case 'gen-invite': {
+      const code = 'RR-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      saveCompany({inviteCode: code});
+      render();
+      showToast('New invite code generated: ' + code);
+      break;
+    }
+    case 'copy-invite': {
+      const input = document.getElementById('invite-code');
+      const code = input ? input.value : '';
+      if(!code) return;
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(code).then(function(){ showToast('Invite code copied.'); })
+          .catch(function(){ showToast('Copy failed — select the code manually.', 'error'); });
+      } else {
+        input.select();
+        try{ document.execCommand('copy'); showToast('Invite code copied.'); }
+        catch(err){ showToast('Copy failed — select the code manually.', 'error'); }
+      }
+      break;
+    }
+    case 'export-json':
+      exportAllJSON();
+      break;
+    case 'import-json': {
+      const file = document.getElementById('import-file');
+      if(file) file.click();
+      break;
+    }
+    case 'clear-all':
+      clearAllData();
+      break;
+  }
+});
+
+document.addEventListener('click', function(e){
+  const dd = document.getElementById('user-dropdown');
+  if(dd && !dd.hidden && !e.target.closest('.user-menu')) dd.hidden = true;
+});
+
+window.addEventListener('hashchange', function(){
+  const sb = document.getElementById('sidebar');
+  if(sb) sb.classList.remove('open');
+  render();
+});
+
+window.addEventListener('resize', function(){
+  const canvas = document.getElementById('weight-chart');
+  if(canvas) drawWeightChart(canvas);
+});
+
+/* =========================================================
+   18. BOOT
+   ========================================================= */
+async function boot(){
+  await initData();
+  applyTheme();
+  if(!location.hash && currentUser()) location.hash = '#/dashboard';
+  render();
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
